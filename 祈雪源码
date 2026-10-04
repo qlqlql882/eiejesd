@@ -1,3 +1,4 @@
+```lua
 -- ==================== WindUI 加载（带重试） ====================
 local WindUI
 for i = 1, 5 do
@@ -851,3 +852,4 @@ WindUI:Notify({
     Duration = 5,
     Icon = "check-circle",
 })
+```
