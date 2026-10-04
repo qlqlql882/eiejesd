@@ -30,21 +30,6 @@ local VU = game:GetService("VirtualUser")
 
 local T = {}
 
--- ==================== 渐变文字 ====================
-local function gradient(text, startColor, endColor)
-    local result = ""
-    local length = #text
-    for i = 1, length do
-        local t = (i - 1) / math.max(length - 1, 1)
-        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
-        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
-        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
-        local char = text:sub(i, i)
-        result = result .. "<font color=\"rgb(" .. r .. ", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
-    end
-    return result
-end
-
 -- ==================== 工具函数 ====================
 local function HRP()
     local c = Players.LocalPlayer.Character
@@ -376,16 +361,39 @@ T.fulllight = function(on)
     if on then LT.ClockTime = 14 end
 end
 
+-- ==================== 主题颜色存储 ====================
+local ThemeColors = {
+    Accent = "#00FF87",
+    Outline = "#60EFFF",
+    Text = "#FFFFFF",
+    Placeholder = "#888888",
+}
+
+local function ApplyTheme()
+    pcall(function()
+        WindUI:AddTheme({
+            Name = "QixueColor",
+            Accent = ThemeColors.Accent,
+            Outline = ThemeColors.Outline,
+            Text = ThemeColors.Text,
+            Placeholder = ThemeColors.Placeholder,
+        })
+        WindUI:SetTheme("QixueColor")
+    end)
+end
+
+ApplyTheme()
+
 -- ==================== 创建窗口 ====================
 local Window = WindUI:CreateWindow({
-    Title = gradient("祈雪脚本中心", Color3.fromHex("#00FF87"), Color3.fromHex("#60EFFF")),
+    Title = "祈雪脚本中心",
     Icon = "sparkles",
     IconThemed = true,
     Author = "祈雪",
     Folder = "QixueScript",
     Size = UDim2.fromOffset(600, 460),
     Transparent = true,
-    Theme = "Dark",
+    Theme = "QixueColor",
     User = {
         Enabled = true,
         Anonymous = false,
@@ -400,11 +408,12 @@ local FunctionTab = Window:Tab({ Title = "功能", Icon = "shield" })
 local CombatTab = Window:Tab({ Title = "战斗", Icon = "swords" })
 local NumberTab = Window:Tab({ Title = "数值", Icon = "hash" })
 local ServerTab = Window:Tab({ Title = "服务器", Icon = "server" })
+local SettingsTab = Window:Tab({ Title = "设置", Icon = "palette" })
 
 -- ==================== 公告 ====================
 AnnounceTab:Section({ Title = "脚本信息" })
 AnnounceTab:Paragraph({
-    Title = gradient("欢迎使用 祈雪脚本", Color3.fromHex("#FF0F7B"), Color3.fromHex("#F89B29")),
+    Title = "欢迎使用 祈雪脚本",
     Desc = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
 })
 
@@ -567,6 +576,45 @@ ServerTab:Button({
         pcall(function()
             loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/9efdaf7637b4106c975abbcde84522a21821bb7c09ac82f391584269c023a249/download"))()
         end)
+    end,
+})
+
+-- ==================== 设置 ====================
+SettingsTab:Section({ Title = "主题颜色" })
+
+SettingsTab:Colorpicker({
+    Title = "主色",
+    Default = Color3.fromHex(ThemeColors.Accent),
+    Callback = function(c)
+        ThemeColors.Accent = "#" .. c:ToHex()
+        ApplyTheme()
+    end,
+})
+
+SettingsTab:Colorpicker({
+    Title = "边框色",
+    Default = Color3.fromHex(ThemeColors.Outline),
+    Callback = function(c)
+        ThemeColors.Outline = "#" .. c:ToHex()
+        ApplyTheme()
+    end,
+})
+
+SettingsTab:Colorpicker({
+    Title = "文字色",
+    Default = Color3.fromHex(ThemeColors.Text),
+    Callback = function(c)
+        ThemeColors.Text = "#" .. c:ToHex()
+        ApplyTheme()
+    end,
+})
+
+SettingsTab:Colorpicker({
+    Title = "占位文字色",
+    Default = Color3.fromHex(ThemeColors.Placeholder),
+    Callback = function(c)
+        ThemeColors.Placeholder = "#" .. c:ToHex()
+        ApplyTheme()
     end,
 })
 
