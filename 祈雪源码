@@ -1,13 +1,10 @@
 -- ==================== Fluent UI 加载 ====================
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- ==================== 服务 ====================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local SG = game:GetService("StarterGui")
 local LT = game:GetService("Lighting")
 local VU = game:GetService("VirtualUser")
 
@@ -67,11 +64,7 @@ T.serverinfo = function(on)
                 math.floor(hrp.Position.Z))
         end
     end
-    Fluent:Notify({
-        Title = "服务器信息",
-        Content = table.concat(s, "\n"),
-        Duration = 5,
-    })
+    Fluent:Notify({Title = "服务器信息", Content = table.concat(s, "\n"), Duration = 5})
 end
 
 T.collect = function(on)
@@ -359,13 +352,13 @@ local AnnounceTab = Window:AddTab({ Title = "公告", Icon = "megaphone" })
 
 AnnounceTab:AddParagraph({
     Title = "欢迎使用 祈雪脚本",
-    Content = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
+    Content = "制作者 祈雪\n2026年10月1日\n持续更新\n\n开启功能后在游戏中体验效果",
 })
 
--- ==================== 通用 ====================
+-- ==================== 通用（含所有功能） ====================
 local GeneralTab = Window:AddTab({ Title = "通用", Icon = "settings" })
 
-local GeneralGroup = GeneralTab:AddLeftGroupbox("功能开关")
+local FunctionGroup = GeneralTab:AddLeftGroupbox("功能开关")
 
 local toggles = {
     {"无敌模式", "god"},
@@ -389,7 +382,7 @@ local toggles = {
 }
 
 for _, it in ipairs(toggles) do
-    GeneralGroup:AddToggle(it[2], {
+    FunctionGroup:AddToggle(it[2], {
         Title = it[1],
         Default = false,
         Callback = function(s)
@@ -417,7 +410,7 @@ end
 local NumberGroup = GeneralTab:AddRightGroupbox("数值设置")
 
 NumberGroup:AddInput("speed_input", {
-    Title = "⚡ 速度",
+    Title = "速度",
     Default = "16",
     Placeholder = "16",
     Callback = function(t)
@@ -429,7 +422,7 @@ NumberGroup:AddInput("speed_input", {
 })
 
 NumberGroup:AddInput("jump_input", {
-    Title = "🦘 跳跃",
+    Title = "跳跃",
     Default = "50",
     Placeholder = "50",
     Callback = function(t)
@@ -441,7 +434,7 @@ NumberGroup:AddInput("jump_input", {
 })
 
 NumberGroup:AddInput("gravity_input", {
-    Title = "🌙 重力",
+    Title = "重力",
     Default = "196",
     Placeholder = "196",
     Callback = function(t)
@@ -450,13 +443,10 @@ NumberGroup:AddInput("gravity_input", {
     end,
 })
 
--- ==================== 服务器功能 ====================
-local ServerTab = Window:AddTab({ Title = "服务器功能", Icon = "server" })
+local ServerGroup = GeneralTab:AddLeftGroupbox("服务器功能")
 
-local DisasterGroup = ServerTab:AddLeftGroupbox("自然灾害")
-
-DisasterGroup:AddButton({
-    Title = "🌪️ 自然灾害",
+ServerGroup:AddButton({
+    Title = "自然灾害",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://pastebin.com/raw/5fKvum70"))()
@@ -464,8 +454,8 @@ DisasterGroup:AddButton({
     end,
 })
 
-DisasterGroup:AddButton({
-    Title = "🌊 自然灾害2",
+ServerGroup:AddButton({
+    Title = "自然灾害2",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/2dgeneralspam1/scripts-and-stuff/master/scripts/LoadstringUjHI6RQpz2o8", true))()
@@ -473,10 +463,8 @@ DisasterGroup:AddButton({
     end,
 })
 
-local FishGroup = ServerTab:AddRightGroupbox("钓鱼模拟器")
-
-FishGroup:AddButton({
-    Title = "🎣 钓鱼模拟器1",
+ServerGroup:AddButton({
+    Title = "钓鱼模拟器1",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/bebedi15/SRM-Scripts/main/Bebedi9960/SRMHub"))()
@@ -484,8 +472,8 @@ FishGroup:AddButton({
     end,
 })
 
-FishGroup:AddButton({
-    Title = "🎣 钓鱼模拟器2",
+ServerGroup:AddButton({
+    Title = "钓鱼模拟器2",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/dingding123hhh/ggghjn/main/%E4%B8%81%E4%B8%81%E9%92%93%E9%B1%BC%E6%A8%A1%E6%8B%9F%E5%99%A8.txt"))()
@@ -493,12 +481,10 @@ FishGroup:AddButton({
     end,
 })
 
-local InkGroup = ServerTab:AddLeftGroupbox("墨水游戏")
-
 getgenv().SCRIPT_KEY = ""
 
-InkGroup:AddInput("ink_key", {
-    Title = "🔑 秋辞",
+ServerGroup:AddInput("ink_key", {
+    Title = "秋辞",
     Default = "",
     Placeholder = "输入密钥",
     Callback = function(t)
@@ -506,25 +492,14 @@ InkGroup:AddInput("ink_key", {
     end,
 })
 
-InkGroup:AddButton({
-    Title = "🖋️ 加载 AF InkGame 墨水游戏",
+ServerGroup:AddButton({
+    Title = "加载 AF InkGame 墨水游戏",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/9efdaf7637b4106c975abbcde84522a21821bb7c09ac82f391584269c023a249/download"))()
         end)
     end,
 })
-
--- ==================== 保存管理 ====================
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("QixueScript")
-SaveManager:SetFolder("QixueScript/Configs")
-SaveManager:BuildConfigSection(Window:AddTab({ Title = "设置", Icon = "settings" }))
-InterfaceManager:ApplyToTab(Window:AddTab({ Title = "界面", Icon = "palette" }))
-SaveManager:LoadAutoloadConfig()
 
 -- ==================== 完成提示 ====================
 Fluent:Notify({
