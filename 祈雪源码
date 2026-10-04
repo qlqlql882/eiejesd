@@ -364,9 +364,10 @@ AnnounceTab:CreateParagraph({
     Content = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
 })
 
--- ==================== 通用（含战斗功能） ====================
+-- ==================== 通用（含所有功能） ====================
 local GeneralTab = Window:CreateTab("通用", "settings")
 
+-- 功能开关
 GeneralTab:CreateSection("功能开关")
 
 local toggles = {
@@ -401,6 +402,7 @@ for _, it in ipairs(toggles) do
     })
 end
 
+-- 战斗功能
 GeneralTab:CreateSection("战斗功能")
 
 for _, it in ipairs({
@@ -418,6 +420,7 @@ for _, it in ipairs({
     })
 end
 
+-- 数值设置
 GeneralTab:CreateSection("数值设置")
 
 GeneralTab:CreateInput({
@@ -454,12 +457,10 @@ GeneralTab:CreateInput({
     end,
 })
 
--- ==================== 服务器功能 ====================
-local ServerTab = Window:CreateTab("服务器功能", "server")
+-- 服务器功能：自然灾害
+GeneralTab:CreateSection("服务器功能 - 自然灾害")
 
-ServerTab:CreateSection("自然灾害")
-
-ServerTab:CreateButton({
+GeneralTab:CreateButton({
     Name = "🌪️ 自然灾害",
     Callback = function()
         pcall(function()
@@ -468,7 +469,7 @@ ServerTab:CreateButton({
     end,
 })
 
-ServerTab:CreateButton({
+GeneralTab:CreateButton({
     Name = "🌊 自然灾害2",
     Callback = function()
         pcall(function()
@@ -477,9 +478,10 @@ ServerTab:CreateButton({
     end,
 })
 
-ServerTab:CreateSection("钓鱼模拟器")
+-- 服务器功能：钓鱼模拟器
+GeneralTab:CreateSection("服务器功能 - 钓鱼模拟器")
 
-ServerTab:CreateButton({
+GeneralTab:CreateButton({
     Name = "🎣 钓鱼模拟器1",
     Callback = function()
         pcall(function()
@@ -488,7 +490,7 @@ ServerTab:CreateButton({
     end,
 })
 
-ServerTab:CreateButton({
+GeneralTab:CreateButton({
     Name = "🎣 钓鱼模拟器2",
     Callback = function()
         pcall(function()
@@ -497,11 +499,12 @@ ServerTab:CreateButton({
     end,
 })
 
-ServerTab:CreateSection("墨水游戏")
+-- 服务器功能：墨水游戏
+GeneralTab:CreateSection("服务器功能 - 墨水游戏")
 
 getgenv().SCRIPT_KEY = ""
 
-ServerTab:CreateInput({
+GeneralTab:CreateInput({
     Name = "🔑 秋辞",
     CurrentValue = "",
     RemoveTextAfterFocusLost = false,
@@ -510,7 +513,7 @@ ServerTab:CreateInput({
     end,
 })
 
-ServerTab:CreateButton({
+GeneralTab:CreateButton({
     Name = "🖋️ 加载 AF InkGame 墨水游戏",
     Callback = function()
         pcall(function()
