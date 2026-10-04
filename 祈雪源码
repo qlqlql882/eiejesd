@@ -1,4 +1,3 @@
-```lua
 -- ==================== WindUI 加载（带重试） ====================
 local WindUI
 for i = 1, 5 do
@@ -362,7 +361,6 @@ T.fulllight = function(on)
     if on then LT.ClockTime = 14 end
 end
 
--- 飞行模式
 T.fly = function(on)
     if on then
         local hrp = HRP()
@@ -391,7 +389,6 @@ T.fly = function(on)
     end
 end
 
--- 超级跳
 T.superjump = function(on)
     local h = HUM()
     if h then
@@ -400,7 +397,6 @@ T.superjump = function(on)
     end
 end
 
--- 兔子跳
 T.bunnyhop = function(on)
     if on then
         T._bh = RunService.Heartbeat:Connect(function()
@@ -414,7 +410,6 @@ T.bunnyhop = function(on)
     end
 end
 
--- 彩虹角色
 T.rainbow = function(on)
     if on then
         T._rb = RunService.Heartbeat:Connect(function()
@@ -433,7 +428,6 @@ T.rainbow = function(on)
     end
 end
 
--- 全屏特效
 T.screenfx = function(on)
     if on then
         local cc = Instance.new("ColorCorrectionEffect")
@@ -448,7 +442,6 @@ T.screenfx = function(on)
     end
 end
 
--- 拖尾特效
 T.trail = function(on)
     if on then
         local c = Players.LocalPlayer.Character
@@ -474,7 +467,6 @@ T.trail = function(on)
     end
 end
 
--- 自定义天空盒
 T.skybox = function(on)
     if on then
         local sky = Instance.new("Sky")
@@ -492,7 +484,6 @@ T.skybox = function(on)
     end
 end
 
--- 防踢
 T.antikick = function(on)
     if on then
         T._kick = true
@@ -516,7 +507,6 @@ T.antikick = function(on)
     end
 end
 
--- ==================== 瞬移坐标函数 ====================
 getgenv().QixueTP = function(x, y, z)
     local hrp = HRP()
     if hrp then
@@ -852,4 +842,3 @@ WindUI:Notify({
     Duration = 5,
     Icon = "check-circle",
 })
-```
