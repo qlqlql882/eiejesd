@@ -1,5 +1,24 @@
--- ==================== WindUI 加载 ====================
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/1.5.0/main.lua"))()
+-- ==================== WindUI 加载（带重试） ====================
+local WindUI
+for i = 1, 5 do
+    local ok, res = pcall(function()
+        return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/1.5.0/main.lua"))()
+    end)
+    if ok and res then
+        WindUI = res
+        break
+    end
+    task.wait(1)
+end
+
+if not WindUI then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "加载失败",
+        Text = "WindUI 下载失败，请重试",
+        Duration = 10,
+    })
+    return
+end
 
 -- ==================== 服务 ====================
 local Players = game:GetService("Players")
@@ -25,29 +44,6 @@ local function gradient(text, startColor, endColor)
     end
     return result
 end
-
--- ==================== 欢迎弹窗 ====================
-local Confirmed = false
-WindUI:Popup({
-    Title = "欢迎使用 祈雪脚本",
-    Icon = "sparkles",
-    IconThemed = true,
-    Content = "这是 " .. gradient("祈雪脚本中心", Color3.fromHex("#00FF87"), Color3.fromHex("#60EFFF")) .. " 的启动界面\n\n点击 Continue 开始使用",
-    Buttons = {
-        {
-            Title = "Cancel",
-            Callback = function() end,
-            Variant = "Secondary",
-        },
-        {
-            Title = "Continue",
-            Icon = "arrow-right",
-            Callback = function() Confirmed = true end,
-            Variant = "Primary",
-        },
-    }
-})
-repeat task.wait() until Confirmed
 
 -- ==================== 工具函数 ====================
 local function HRP()
@@ -395,21 +391,15 @@ local Window = WindUI:CreateWindow({
         Anonymous = false,
     },
     SideBarWidth = 180,
-    ScrollBarEnabled = true,
     HasOutline = true,
 })
 
--- ==================== 分组 Section ====================
-local FunctionSection = Window:Section({ Title = "功能", Opened = true })
-local CombatSection = Window:Section({ Title = "战斗", Opened = true })
-local ServerSection = Window:Section({ Title = "服务器", Opened = true })
-
 -- ==================== 标签页 ====================
 local AnnounceTab = Window:Tab({ Title = "公告", Icon = "megaphone" })
-local FunctionTab = FunctionSection:Tab({ Title = "功能开关", Icon = "shield" })
-local NumberTab = FunctionSection:Tab({ Title = "数值设置", Icon = "hash" })
-local CombatTab = CombatSection:Tab({ Title = "战斗功能", Icon = "swords" })
-local ServerTab = ServerSection:Tab({ Title = "服务器功能", Icon = "server" })
+local FunctionTab = Window:Tab({ Title = "功能", Icon = "shield" })
+local CombatTab = Window:Tab({ Title = "战斗", Icon = "swords" })
+local NumberTab = Window:Tab({ Title = "数值", Icon = "hash" })
+local ServerTab = Window:Tab({ Title = "服务器", Icon = "server" })
 
 -- ==================== 公告 ====================
 AnnounceTab:Section({ Title = "脚本信息" })
@@ -419,7 +409,7 @@ AnnounceTab:Paragraph({
 })
 
 -- ==================== 功能开关 ====================
-FunctionTab:Section({ Title = "开关" })
+FunctionTab:Section({ Title = "功能开关" })
 
 local toggles = {
     {"无敌模式", "🛡️", "god"},
