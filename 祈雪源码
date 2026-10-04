@@ -361,6 +361,168 @@ T.fulllight = function(on)
     if on then LT.ClockTime = 14 end
 end
 
+-- 飞行模式
+T.fly = function(on)
+    if on then
+        local hrp = HRP()
+        if not hrp then return end
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "FlyBV"
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+        T._flyBV = bv
+        T._flyLoop = RunService.RenderStepped:Connect(function()
+            if not T._flyBV then return end
+            local cam = workspace.CurrentCamera
+            local move = Vector3.new()
+            if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0, 1, 0) end
+            T._flyBV.Velocity = move * 100
+        end)
+    else
+        if T._flyBV then T._flyBV:Destroy(); T._flyBV = nil end
+        if T._flyLoop then T._flyLoop:Disconnect(); T._flyLoop = nil end
+    end
+end
+
+-- 超级跳
+T.superjump = function(on)
+    local h = HUM()
+    if h then
+        h.UseJumpPower = true
+        h.JumpPower = on and 300 or 50
+    end
+end
+
+-- 兔子跳
+T.bunnyhop = function(on)
+    if on then
+        T._bh = RunService.Heartbeat:Connect(function()
+            local h = HUM()
+            if h and h:GetState() == Enum.HumanoidStateType.Landed then
+                h:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if T._bh then T._bh:Disconnect(); T._bh = nil end
+    end
+end
+
+-- 彩虹角色
+T.rainbow = function(on)
+    if on then
+        T._rb = RunService.Heartbeat:Connect(function()
+            local c = Players.LocalPlayer.Character
+            if not c then return end
+            local hue = tick() % 1
+            local color = Color3.fromHSV(hue, 1, 1)
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    pcall(function() p.Color = color end)
+                end
+            end
+        end)
+    else
+        if T._rb then T._rb:Disconnect(); T._rb = nil end
+    end
+end
+
+-- 全屏特效
+T.screenfx = function(on)
+    if on then
+        local cc = Instance.new("ColorCorrectionEffect")
+        cc.Name = "QixueFX"
+        cc.Saturation = 1.5
+        cc.Contrast = 0.3
+        cc.Brightness = 0.05
+        cc.Parent = LT
+        T._fx = cc
+    else
+        if T._fx then T._fx:Destroy(); T._fx = nil end
+    end
+end
+
+-- 拖尾特效
+T.trail = function(on)
+    if on then
+        local c = Players.LocalPlayer.Character
+        if not c then return end
+        local hrp = c:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local a0 = Instance.new("Attachment", hrp)
+        a0.Position = Vector3.new(0, 0.5, 0)
+        local a1 = Instance.new("Attachment", hrp)
+        a1.Position = Vector3.new(0, -0.5, 0)
+        local tr = Instance.new("Trail", hrp)
+        tr.Attachment0 = a0
+        tr.Attachment1 = a1
+        tr.Lifetime = 1
+        tr.MinLength = 0
+        tr.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 0, 255))
+        T._trail = {a0, a1, tr}
+    else
+        if T._trail then
+            for _, o in ipairs(T._trail) do pcall(function() o:Destroy() end) end
+            T._trail = nil
+        end
+    end
+end
+
+-- 自定义天空盒
+T.skybox = function(on)
+    if on then
+        local sky = Instance.new("Sky")
+        sky.Name = "QixueSky"
+        sky.SkyboxBk = "rbxassetid://159454299"
+        sky.SkyboxDn = "rbxassetid://159454296"
+        sky.SkyboxFt = "rbxassetid://159454293"
+        sky.SkyboxLf = "rbxassetid://159454286"
+        sky.SkyboxRt = "rbxassetid://159454300"
+        sky.SkyboxUp = "rbxassetid://159454288"
+        sky.Parent = LT
+        T._sky = sky
+    else
+        if T._sky then T._sky:Destroy(); T._sky = nil end
+    end
+end
+
+-- 防踢
+T.antikick = function(on)
+    if on then
+        T._kick = true
+        pcall(function()
+            local mt = getrawmetatable(game)
+            if mt then
+                local old = mt.__namecall
+                setreadonly(mt, false)
+                mt.__namecall = newcclosure(function(self, ...)
+                    local method = getnamecallmethod()
+                    if T._kick and (method == "Kick" or method == "kick") then
+                        return
+                    end
+                    return old(self, ...)
+                end)
+                setreadonly(mt, true)
+            end
+        end)
+    else
+        T._kick = false
+    end
+end
+
+-- ==================== 瞬移坐标函数 ====================
+getgenv().QixueTP = function(x, y, z)
+    local hrp = HRP()
+    if hrp then
+        hrp.CFrame = CFrame.new(tonumber(x) or 0, tonumber(y) or 0, tonumber(z) or 0)
+    end
+end
+
 -- ==================== 主题颜色存储 ====================
 local ThemeColors = {
     Accent = "#00FF87",
@@ -407,6 +569,8 @@ local AnnounceTab = Window:Tab({ Title = "公告", Icon = "megaphone" })
 local FunctionTab = Window:Tab({ Title = "功能", Icon = "shield" })
 local CombatTab = Window:Tab({ Title = "战斗", Icon = "swords" })
 local NumberTab = Window:Tab({ Title = "数值", Icon = "hash" })
+local MoveTab = Window:Tab({ Title = "移动", Icon = "move" })
+local VisualTab = Window:Tab({ Title = "视觉", Icon = "eye" })
 local ServerTab = Window:Tab({ Title = "服务器", Icon = "server" })
 local SettingsTab = Window:Tab({ Title = "设置", Icon = "palette" })
 
@@ -470,6 +634,17 @@ for _, it in ipairs({
     })
 end
 
+CombatTab:Section({ Title = "防护" })
+
+CombatTab:Toggle({
+    Title = "🛡️ 防踢",
+    Desc = "阻止游戏踢你",
+    Default = false,
+    Callback = function(s)
+        pcall(function() if T.antikick then T.antikick(s) end end)
+    end,
+})
+
 -- ==================== 数值设置 ====================
 NumberTab:Section({ Title = "数值" })
 
@@ -510,6 +685,57 @@ NumberTab:Input({
         if v and v > 0 then workspace.Gravity = v end
     end,
 })
+
+-- ==================== 移动 ====================
+MoveTab:Section({ Title = "移动功能" })
+
+for _, it in ipairs({
+    {"飞行模式", "🕊️", "fly"},
+    {"超级跳", "🦘", "superjump"},
+    {"兔子跳", "🐰", "bunnyhop"},
+}) do
+    MoveTab:Toggle({
+        Title = it[2] .. " " .. it[1],
+        Desc = "",
+        Default = false,
+        Callback = function(s)
+            pcall(function() if T[it[3]] then T[it[3]](s) end end)
+        end,
+    })
+end
+
+MoveTab:Section({ Title = "瞬移坐标" })
+
+MoveTab:Input({ Title = "X", Desc = "", Value = "0", Callback = function(t) T._tx = t end })
+MoveTab:Input({ Title = "Y", Desc = "", Value = "0", Callback = function(t) T._ty = t end })
+MoveTab:Input({ Title = "Z", Desc = "", Value = "0", Callback = function(t) T._tz = t end })
+
+MoveTab:Button({
+    Title = "📍 传送到坐标",
+    Desc = "根据上面 XYZ 传送",
+    Callback = function()
+        getgenv().QixueTP(T._tx or 0, T._ty or 0, T._tz or 0)
+    end,
+})
+
+-- ==================== 视觉 ====================
+VisualTab:Section({ Title = "视觉特效" })
+
+for _, it in ipairs({
+    {"彩虹角色", "🌈", "rainbow"},
+    {"全屏特效", "🎨", "screenfx"},
+    {"拖尾特效", "✨", "trail"},
+    {"自定义天空盒", "🌌", "skybox"},
+}) do
+    VisualTab:Toggle({
+        Title = it[2] .. " " .. it[1],
+        Desc = "",
+        Default = false,
+        Callback = function(s)
+            pcall(function() if T[it[3]] then T[it[3]](s) end end)
+        end,
+    })
+end
 
 -- ==================== 服务器功能 ====================
 ServerTab:Section({ Title = "自然灾害" })
