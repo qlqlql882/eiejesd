@@ -1,4 +1,4 @@
--- ==================== WindUI 加载（1.5.0 固定版） ====================
+-- ==================== WindUI 加载 ====================
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/1.5.0/main.lua"))()
 
 -- ==================== 服务 ====================
@@ -10,6 +10,44 @@ local LT = game:GetService("Lighting")
 local VU = game:GetService("VirtualUser")
 
 local T = {}
+
+-- ==================== 渐变文字 ====================
+local function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r .. ", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
+    end
+    return result
+end
+
+-- ==================== 欢迎弹窗 ====================
+local Confirmed = false
+WindUI:Popup({
+    Title = "欢迎使用 祈雪脚本",
+    Icon = "sparkles",
+    IconThemed = true,
+    Content = "这是 " .. gradient("祈雪脚本中心", Color3.fromHex("#00FF87"), Color3.fromHex("#60EFFF")) .. " 的启动界面\n\n点击 Continue 开始使用",
+    Buttons = {
+        {
+            Title = "Cancel",
+            Callback = function() end,
+            Variant = "Secondary",
+        },
+        {
+            Title = "Continue",
+            Icon = "arrow-right",
+            Callback = function() Confirmed = true end,
+            Variant = "Primary",
+        },
+    }
+})
+repeat task.wait() until Confirmed
 
 -- ==================== 工具函数 ====================
 local function HRP()
@@ -344,29 +382,44 @@ end
 
 -- ==================== 创建窗口 ====================
 local Window = WindUI:CreateWindow({
-    Title = "祈雪脚本中心",
+    Title = gradient("祈雪脚本中心", Color3.fromHex("#00FF87"), Color3.fromHex("#60EFFF")),
     Icon = "sparkles",
+    IconThemed = true,
     Author = "祈雪",
     Folder = "QixueScript",
     Size = UDim2.fromOffset(600, 460),
     Transparent = true,
     Theme = "Dark",
-    User = {Enabled = true, Anonymous = false},
+    User = {
+        Enabled = true,
+        Anonymous = false,
+    },
     SideBarWidth = 180,
+    ScrollBarEnabled = true,
     HasOutline = true,
 })
 
+-- ==================== 分组 Section ====================
+local FunctionSection = Window:Section({ Title = "功能", Opened = true })
+local CombatSection = Window:Section({ Title = "战斗", Opened = true })
+local ServerSection = Window:Section({ Title = "服务器", Opened = true })
+
+-- ==================== 标签页 ====================
+local AnnounceTab = Window:Tab({ Title = "公告", Icon = "megaphone" })
+local FunctionTab = FunctionSection:Tab({ Title = "功能开关", Icon = "shield" })
+local NumberTab = FunctionSection:Tab({ Title = "数值设置", Icon = "hash" })
+local CombatTab = CombatSection:Tab({ Title = "战斗功能", Icon = "swords" })
+local ServerTab = ServerSection:Tab({ Title = "服务器功能", Icon = "server" })
+
 -- ==================== 公告 ====================
-local AnnounceTab = Window:Tab({Title = "公告", Icon = "megaphone"})
-AnnounceTab:Section({Title = "脚本信息"})
+AnnounceTab:Section({ Title = "脚本信息" })
 AnnounceTab:Paragraph({
-    Title = "欢迎使用 祈雪脚本",
+    Title = gradient("欢迎使用 祈雪脚本", Color3.fromHex("#FF0F7B"), Color3.fromHex("#F89B29")),
     Desc = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
 })
 
--- ==================== 通用 ====================
-local GeneralTab = Window:Tab({Title = "通用", Icon = "settings"})
-GeneralTab:Section({Title = "功能开关"})
+-- ==================== 功能开关 ====================
+FunctionTab:Section({ Title = "开关" })
 
 local toggles = {
     {"无敌模式", "🛡️", "god"},
@@ -390,7 +443,7 @@ local toggles = {
 }
 
 for _, it in ipairs(toggles) do
-    GeneralTab:Toggle({
+    FunctionTab:Toggle({
         Title = it[2] .. " " .. it[1],
         Desc = "",
         Default = false,
@@ -400,14 +453,15 @@ for _, it in ipairs(toggles) do
     })
 end
 
-GeneralTab:Section({Title = "战斗功能"})
+-- ==================== 战斗功能 ====================
+CombatTab:Section({ Title = "高亮" })
 
 for _, it in ipairs({
     {"团队高亮", "🔵", "teamglow"},
     {"敌对高亮", "🔴", "enemyglow"},
     {"全图点亮", "💡", "fulllight"},
 }) do
-    GeneralTab:Toggle({
+    CombatTab:Toggle({
         Title = it[2] .. " " .. it[1],
         Desc = "",
         Default = false,
@@ -417,9 +471,10 @@ for _, it in ipairs({
     })
 end
 
-GeneralTab:Section({Title = "数值设置"})
+-- ==================== 数值设置 ====================
+NumberTab:Section({ Title = "数值" })
 
-GeneralTab:Input({
+NumberTab:Input({
     Title = "⚡ 速度",
     Desc = "移动速度",
     Value = "16",
@@ -431,19 +486,23 @@ GeneralTab:Input({
     end,
 })
 
-GeneralTab:Input({
+NumberTab:Input({
     Title = "🦘 跳跃",
-    Desc = "跳跃高度",
+    Desc = "跳跃力度（默认50）",
     Value = "50",
     Callback = function(t)
         local v = tonumber(t)
         if v and v > 0 then
-            local h = HUM(); if h then h.JumpHeight = v end
+            local h = HUM()
+            if h then
+                h.UseJumpPower = true
+                h.JumpPower = v
+            end
         end
     end,
 })
 
-GeneralTab:Input({
+NumberTab:Input({
     Title = "🌙 重力",
     Desc = "世界重力",
     Value = "196",
@@ -454,9 +513,7 @@ GeneralTab:Input({
 })
 
 -- ==================== 服务器功能 ====================
-local ServerTab = Window:Tab({Title = "服务器功能", Icon = "server"})
-
-ServerTab:Section({Title = "自然灾害"})
+ServerTab:Section({ Title = "自然灾害" })
 
 ServerTab:Button({
     Title = "🌪️ 自然灾害",
@@ -478,7 +535,7 @@ ServerTab:Button({
     end,
 })
 
-ServerTab:Section({Title = "钓鱼模拟器"})
+ServerTab:Section({ Title = "钓鱼模拟器" })
 
 ServerTab:Button({
     Title = "🎣 钓鱼模拟器1",
@@ -500,7 +557,7 @@ ServerTab:Button({
     end,
 })
 
-ServerTab:Section({Title = "墨水游戏"})
+ServerTab:Section({ Title = "墨水游戏" })
 
 getgenv().SCRIPT_KEY = ""
 
