@@ -30,7 +30,6 @@ local VU = game:GetService("VirtualUser")
 
 local T = {}
 
--- ==================== 工具函数 ====================
 local function HRP()
     local c = Players.LocalPlayer.Character
     return c and c:FindFirstChild("HumanoidRootPart")
@@ -44,15 +43,25 @@ local function Ntf(t, x, d)
         SG:SetCore("SendNotification", {Title = t, Text = x, Duration = d or 3})
     end)
 end
+local function getScreenGui(name)
+    local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
+    local g = pg:FindFirstChild(name)
+    if not g then
+        g = Instance.new("ScreenGui")
+        g.Name = name
+        g.ResetOnSpawn = false
+        g.IgnoreGuiInset = true
+        g.Parent = pg
+    end
+    return g
+end
 
--- ==================== 反挂机 ====================
 Players.LocalPlayer.Idled:Connect(function()
     VU:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VU:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
 
--- ==================== 功能实现 ====================
 T.god = function(on)
     local c = Players.LocalPlayer.Character
     if not c then return end
@@ -360,16 +369,370 @@ T.fulllight = function(on)
     LT.Brightness = on and 3 or 1
     if on then LT.ClockTime = 14 end
 end
+-- ==================== 角色特效 ====================
+T.lightning = function(on)
+    if on then
+        T._lgt = RunService.Heartbeat:Connect(function()
+            local hrp = HRP()
+            if not hrp then return end
+            if math.random() < 0.15 then
+                local l = Instance.new("Part")
+                l.Size = Vector3.new(0.3, 20, 0.3)
+                l.Color = Color3.fromRGB(200, 230, 255)
+                l.Material = Enum.Material.Neon
+                l.Anchored = true
+                l.CanCollide = false
+                l.Transparency = 0.2
+                l.CFrame = CFrame.new(hrp.Position + Vector3.new(math.random(-10,10), 10, math.random(-10,10)))
+                l.Parent = workspace
+                task.delay(0.15, function() if l then l:Destroy() end end)
+            end
+        end)
+    else
+        if T._lgt then T._lgt:Disconnect(); T._lgt = nil end
+    end
+end
 
--- 飞行模式（手机 + 电脑通用）
+T.magiccircle = function(on)
+    if on then
+        local hrp = HRP()
+        if not hrp then return end
+        local p = Instance.new("Part")
+        p.Name = "MagicCircle"
+        p.Shape = Enum.PartType.Cylinder
+        p.Size = Vector3.new(0.1, 12, 12)
+        p.Color = Color3.fromRGB(138, 43, 226)
+        p.Material = Enum.Material.Neon
+        p.Anchored = true
+        p.CanCollide = false
+        p.Transparency = 0.3
+        p.Parent = workspace
+        T._mc = p
+        T._mcLoop = RunService.Heartbeat:Connect(function()
+            local h2 = HRP()
+            if not h2 or not T._mc then return end
+            T._mc.CFrame = CFrame.new(h2.Position - Vector3.new(0,3,0)) * CFrame.Angles(0, 0, math.rad(tick()*100))
+        end)
+    else
+        if T._mc then T._mc:Destroy(); T._mc = nil end
+        if T._mcLoop then T._mcLoop:Disconnect(); T._mcLoop = nil end
+    end
+end
+
+T.shockwave = function(on)
+    if on then
+        T._swActive = true
+        T._sw = task.spawn(function()
+            while T._swActive do
+                local hrp = HRP()
+                if hrp then
+                    local ring = Instance.new("Part")
+                    ring.Shape = Enum.PartType.Cylinder
+                    ring.Size = Vector3.new(0.2, 1, 1)
+                    ring.Color = Color3.fromRGB(0, 255, 255)
+                    ring.Material = Enum.Material.Neon
+                    ring.Anchored = true
+                    ring.CanCollide = false
+                    ring.CFrame = CFrame.new(hrp.Position - Vector3.new(0,3,0))
+                    ring.Parent = workspace
+                    task.spawn(function()
+                        for i = 1, 20 do
+                            if not ring or not ring.Parent then break end
+                            ring.Size = Vector3.new(0.2, 1 + i*2, 1 + i*2)
+                            ring.Transparency = i/20
+                            task.wait(0.03)
+                        end
+                        if ring then ring:Destroy() end
+                    end)
+                end
+                task.wait(2)
+            end
+        end)
+    else
+        T._swActive = false
+        if T._sw then T._sw = nil end
+    end
+end
+
+T.meteor = function(on)
+    if on then
+        T._mt = RunService.Heartbeat:Connect(function()
+            local hrp = HRP()
+            if not hrp then return end
+            if math.random() < 0.3 then
+                local s = Instance.new("Part")
+                s.Size = Vector3.new(0.3, 0.3, 0.3)
+                s.Color = Color3.fromRGB(255, 200, 0)
+                s.Material = Enum.Material.Neon
+                s.Anchored = true
+                s.CanCollide = false
+                s.CFrame = hrp.CFrame * CFrame.new(math.random(-3,3), math.random(-2,2), math.random(-3,3))
+                s.Parent = workspace
+                task.spawn(function()
+                    for i = 1, 30 do
+                        if not s or not s.Parent then break end
+                        s.Transparency = i/30
+                        s.Size = s.Size * 0.9
+                        task.wait(0.02)
+                    end
+                    if s then s:Destroy() end
+                end)
+            end
+        end)
+    else
+        if T._mt then T._mt:Disconnect(); T._mt = nil end
+    end
+end
+
+T.clones = function(on)
+    if on then
+        T._clones = {}
+        T._cloneLoop = RunService.Heartbeat:Connect(function()
+            local c = Players.LocalPlayer.Character
+            if not c then return end
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            for i = 1, 4 do
+                if not T._clones[i] or not T._clones[i].Parent then
+                    local p = Instance.new("Part")
+                    p.Size = Vector3.new(2, 5, 1)
+                    p.Color = Color3.fromRGB(255, 255, 255)
+                    p.Material = Enum.Material.ForceField
+                    p.Anchored = true
+                    p.CanCollide = false
+                    p.Transparency = 0.3
+                    p.Parent = workspace
+                    T._clones[i] = p
+                end
+                local angle = math.rad(i * 90 + tick() * 100)
+                T._clones[i].CFrame = hrp.CFrame * CFrame.new(math.cos(angle)*5, 0, math.sin(angle)*5)
+            end
+        end)
+    else
+        if T._cloneLoop then T._cloneLoop:Disconnect(); T._cloneLoop = nil end
+        if T._clones then
+            for _, p in ipairs(T._clones) do pcall(function() p:Destroy() end) end
+            T._clones = nil
+        end
+    end
+end
+
+-- ==================== 屏幕特效 ====================
+T.rainbowBorder = function(on)
+    local name = "QixueRB"
+    if on then
+        local g = getScreenGui(name)
+        local colors = {
+            Color3.fromRGB(255,0,0), Color3.fromRGB(255,165,0), Color3.fromRGB(255,255,0),
+            Color3.fromRGB(0,255,0), Color3.fromRGB(0,150,255), Color3.fromRGB(150,0,255),
+        }
+        for i, col in ipairs(colors) do
+            local f = Instance.new("Frame")
+            f.BackgroundColor3 = col
+            f.BorderSizePixel = 0
+            f.BackgroundTransparency = 0.6
+            if i == 1 then f.Size = UDim2.new(1,0,0,6); f.Position = UDim2.new(0,0,0,0)
+            elseif i == 2 then f.Size = UDim2.new(1,0,0,6); f.Position = UDim2.new(0,0,1,-6)
+            elseif i == 3 then f.Size = UDim2.new(0,6,1,0); f.Position = UDim2.new(0,0,0,0)
+            else f.Size = UDim2.new(0,6,1,0); f.Position = UDim2.new(1,-6,0,0) end
+            f.Parent = g
+        end
+    else
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.cinema = function(on)
+    local name = "QixueCinema"
+    if on then
+        local g = getScreenGui(name)
+        for _, pos in ipairs({
+            {UDim2.new(0,0,0,0), UDim2.new(1,0,0.1,0)},
+            {UDim2.new(0,0,0.9,0), UDim2.new(1,0,0.1,0)},
+        }) do
+            local f = Instance.new("Frame")
+            f.BackgroundColor3 = Color3.new(0,0,0)
+            f.BorderSizePixel = 0
+            f.Position = pos[1]
+            f.Size = pos[2]
+            f.ZIndex = 100
+            f.Parent = g
+        end
+    else
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.colorWorld = function(on)
+    if on then
+        if T._cw then T._cw:Destroy() end
+        local cc = Instance.new("ColorCorrectionEffect")
+        cc.Name = "QixueCW"
+        cc.Parent = LT
+        T._cw = cc
+        T._cwLoop = RunService.Heartbeat:Connect(function()
+            if not T._cw then return end
+            local hue = (tick() * 0.2) % 1
+            T._cw.TintColor = Color3.fromHSV(hue, 0.5, 1)
+            T._cw.Saturation = 0.5
+        end)
+    else
+        if T._cw then T._cw:Destroy(); T._cw = nil end
+        if T._cwLoop then T._cwLoop:Disconnect(); T._cwLoop = nil end
+    end
+end
+
+T.cameraShake = function(on)
+    if on then
+        T._csLoop = RunService.RenderStepped:Connect(function()
+            local cam = workspace.CurrentCamera
+            cam.CFrame = cam.CFrame * CFrame.Angles(math.sin(tick()*20)*0.05, math.cos(tick()*15)*0.05, 0)
+        end)
+    else
+        if T._csLoop then T._csLoop:Disconnect(); T._csLoop = nil end
+    end
+end
+
+T.bloodScreen = function(on)
+    local name = "QixueBlood"
+    if on then
+        local g = getScreenGui(name)
+        for i = 1, 6 do
+            local f = Instance.new("Frame")
+            f.Size = UDim2.new(0, math.random(80,200), 0, math.random(80,200))
+            f.Position = UDim2.new(math.random()*0.9, 0, math.random()*0.9, 0)
+            f.BackgroundColor3 = Color3.fromRGB(150,0,0)
+            f.BackgroundTransparency = 0.4
+            f.BorderSizePixel = 0
+            f.Rotation = math.random(-30,30)
+            f.ZIndex = 5
+            f.Parent = g
+            local c = Instance.new("UICorner")
+            c.CornerRadius = UDim.new(0.5, 0)
+            c.Parent = f
+        end
+    else
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.snowScreen = function(on)
+    local name = "QixueSnow"
+    if on then
+        local g = getScreenGui(name)
+        T._snowFlakes = {}
+        for i = 1, 30 do
+            local f = Instance.new("TextLabel")
+            f.Text = "❄"
+            f.TextSize = math.random(15,40)
+            f.TextColor3 = Color3.fromRGB(255,255,255)
+            f.BackgroundTransparency = 1
+            f.Size = UDim2.new(0, 50, 0, 50)
+            f.Position = UDim2.new(math.random(), 0, -0.1, 0)
+            f.ZIndex = 5
+            f.Parent = g
+            table.insert(T._snowFlakes, f)
+        end
+        T._snowLoop = RunService.RenderStepped:Connect(function()
+            for _, f in ipairs(T._snowFlakes) do
+                if f.Parent then
+                    f.Position = f.Position + UDim2.new(0, math.sin(tick() + f.AbsolutePosition.X) * 0.002, 0.01, 0)
+                    if f.Position.Y.Scale > 1.2 then
+                        f.Position = UDim2.new(math.random(), 0, -0.1, 0)
+                    end
+                end
+            end
+        end)
+    else
+        if T._snowLoop then T._snowLoop:Disconnect(); T._snowLoop = nil end
+        if T._snowFlakes then
+            for _, f in ipairs(T._snowFlakes) do pcall(function() f:Destroy() end) end
+            T._snowFlakes = nil
+        end
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.electricScreen = function(on)
+    local name = "QixueElectric"
+    if on then
+        local g = getScreenGui(name)
+        T._elecLoop = RunService.RenderStepped:Connect(function()
+            if math.random() < 0.1 then
+                local f = Instance.new("Frame")
+                f.Size = UDim2.new(math.random(0.1,0.8), 0, 0, 2)
+                f.Position = UDim2.new(math.random()*0.5, 0, math.random(), 0)
+                f.BackgroundColor3 = Color3.fromRGB(0,200,255)
+                f.BorderSizePixel = 0
+                f.Rotation = math.random(-20,20)
+                f.ZIndex = 5
+                f.Parent = g
+                task.delay(0.1, function() if f then f:Destroy() end end)
+            end
+        end)
+    else
+        if T._elecLoop then T._elecLoop:Disconnect(); T._elecLoop = nil end
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.scanLines = function(on)
+    local name = "QixueScan"
+    if on then
+        local g = getScreenGui(name)
+        for i = 1, 50 do
+            local line = Instance.new("Frame")
+            line.Size = UDim2.new(1, 0, 0, 1)
+            line.Position = UDim2.new(0, 0, i/50, 0)
+            line.BackgroundColor3 = Color3.new(0,0,0)
+            line.BackgroundTransparency = 0.5
+            line.BorderSizePixel = 0
+            line.ZIndex = 6
+            line.Parent = g
+        end
+    else
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+
+T.crosshair = function(on)
+    local name = "QixueCrosshair"
+    if on then
+        local g = getScreenGui(name)
+        local h = Instance.new("Frame")
+        h.Size = UDim2.new(0, 30, 0, 2)
+        h.Position = UDim2.new(0.5, -15, 0.5, -1)
+        h.BackgroundColor3 = Color3.fromRGB(0,255,0)
+        h.BorderSizePixel = 0
+        h.ZIndex = 10
+        h.Parent = g
+        local v = Instance.new("Frame")
+        v.Size = UDim2.new(0, 2, 0, 30)
+        v.Position = UDim2.new(0.5, -1, 0.5, -15)
+        v.BackgroundColor3 = Color3.fromRGB(0,255,0)
+        v.BorderSizePixel = 0
+        v.ZIndex = 10
+        v.Parent = g
+    else
+        local g = Players.LocalPlayer.PlayerGui:FindFirstChild(name)
+        if g then g:Destroy() end
+    end
+end
+-- ==================== 移动 ====================
 T.fly = function(on)
     if on then
         local hrp = HRP()
         if not hrp then return end
         local bv = Instance.new("BodyVelocity")
         bv.Name = "FlyBV"
-        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+        bv.Velocity = Vector3.new(0,0,0)
         bv.Parent = hrp
         T._flyBV = bv
         T._flyLoop = RunService.RenderStepped:Connect(function()
@@ -379,19 +742,13 @@ T.fly = function(on)
             if not h then return end
             local move = Vector3.new()
             local md = h.MoveDirection
-            if md.Magnitude > 0 then
-                move = move + md
-            end
+            if md.Magnitude > 0 then move = move + md end
             if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) or h.Jump then
-                move = move + Vector3.new(0, 1, 0)
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
-                move = move - Vector3.new(0, 1, 0)
-            end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) or h.Jump then move = move + Vector3.new(0,1,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0,1,0) end
             T._flyBV.Velocity = move * 80
         end)
     else
@@ -421,17 +778,15 @@ T.bunnyhop = function(on)
     end
 end
 
+-- ==================== 视觉 ====================
 T.rainbow = function(on)
     if on then
         T._rb = RunService.Heartbeat:Connect(function()
             local c = Players.LocalPlayer.Character
             if not c then return end
-            local hue = tick() % 1
-            local color = Color3.fromHSV(hue, 1, 1)
+            local color = Color3.fromHSV(tick() % 1, 1, 1)
             for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    pcall(function() p.Color = color end)
-                end
+                if p:IsA("BasePart") then pcall(function() p.Color = color end) end
             end
         end)
     else
@@ -468,7 +823,7 @@ T.trail = function(on)
         tr.Attachment1 = a1
         tr.Lifetime = 1
         tr.MinLength = 0
-        tr.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 0, 255))
+        tr.Color = ColorSequence.new(Color3.fromRGB(255,0,0), Color3.fromRGB(0,0,255))
         T._trail = {a0, a1, tr}
     else
         if T._trail then
@@ -504,10 +859,8 @@ T.antikick = function(on)
                 local old = mt.__namecall
                 setreadonly(mt, false)
                 mt.__namecall = newcclosure(function(self, ...)
-                    local method = getnamecallmethod()
-                    if T._kick and (method == "Kick" or method == "kick") then
-                        return
-                    end
+                    local m = getnamecallmethod()
+                    if T._kick and (m == "Kick" or m == "kick") then return end
                     return old(self, ...)
                 end)
                 setreadonly(mt, true)
@@ -525,7 +878,7 @@ getgenv().QixueTP = function(x, y, z)
     end
 end
 
--- ==================== 主题颜色存储（黑白底） ====================
+-- ==================== 主题颜色存储 ====================
 local ThemeColors = {
     Accent = "#1A1A1A",
     Outline = "#FFFFFF",
@@ -558,10 +911,7 @@ local Window = WindUI:CreateWindow({
     Size = UDim2.fromOffset(600, 460),
     Transparent = true,
     Theme = "QixueColor",
-    User = {
-        Enabled = true,
-        Anonymous = false,
-    },
+    User = { Enabled = true, Anonymous = false },
     SideBarWidth = 180,
     HasOutline = true,
 })
@@ -582,7 +932,6 @@ AnnounceTab:Paragraph({
     Title = "欢迎使用 祈雪脚本",
     Desc = "制作者 祈雪\n2026年10月1日\n持续更新\n\n开启功能后在游戏中体验效果",
 })
-
 -- ==================== 功能开关 ====================
 FunctionTab:Section({ Title = "功能开关" })
 
@@ -605,6 +954,20 @@ local toggles = {
     {"夜视功能", "🔦", "night"},
     {"显示FPS", "📊", "fps"},
     {"ESP透视", "👁️", "esp"},
+    {"闪电特效（客户端可见）", "⚡", "lightning"},
+    {"魔法阵（客户端可见）", "🔮", "magiccircle"},
+    {"冲击波（客户端可见）", "💥", "shockwave"},
+    {"流星尾迹（客户端可见）", "🌠", "meteor"},
+    {"分身术（客户端可见）", "🎭", "clones"},
+    {"屏幕边框彩虹（客户端可见）", "🌈", "rainbowBorder"},
+    {"电影黑边（客户端可见）", "🎬", "cinema"},
+    {"变色世界（客户端可见）", "🎨", "colorWorld"},
+    {"镜头摇晃（客户端可见）", "💫", "cameraShake"},
+    {"血迹屏幕（客户端可见）", "🔴", "bloodScreen"},
+    {"雪花屏幕（客户端可见）", "❄️", "snowScreen"},
+    {"电流屏幕（客户端可见）", "⚡", "electricScreen"},
+    {"扫描线（客户端可见）", "🔮", "scanLines"},
+    {"准心（客户端可见）", "🎯", "crosshair"},
 }
 
 for _, it in ipairs(toggles) do
@@ -618,7 +981,38 @@ for _, it in ipairs(toggles) do
     })
 end
 
--- ==================== 战斗功能 ====================
+FunctionTab:Section({ Title = "头顶称号（客户端可见）" })
+
+FunctionTab:Input({
+    Title = "👑 称号文字",
+    Desc = "输入后立即显示在头顶",
+    Value = "祈雪",
+    Callback = function(t)
+        local c = Players.LocalPlayer.Character
+        if not c then return end
+        local head = c:FindFirstChild("Head")
+        if not head then return end
+        local old = head:FindFirstChild("QixueTitle")
+        if old then old:Destroy() end
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "QixueTitle"
+        bb.Size = UDim2.new(0, 200, 0, 50)
+        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.AlwaysOnTop = true
+        bb.Parent = head
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, 0, 1, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = t or "祈雪"
+        lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+        lbl.TextStrokeTransparency = 0
+        lbl.TextScaled = true
+        lbl.Font = Enum.Font.GothamBlack
+        lbl.Parent = bb
+    end,
+})
+
+-- ==================== 战斗 ====================
 CombatTab:Section({ Title = "高亮" })
 
 for _, it in ipairs({
@@ -647,7 +1041,7 @@ CombatTab:Toggle({
     end,
 })
 
--- ==================== 数值设置 ====================
+-- ==================== 数值 ====================
 NumberTab:Section({ Title = "数值" })
 
 NumberTab:Input({
@@ -738,7 +1132,6 @@ for _, it in ipairs({
         end,
     })
 end
-
 -- ==================== 服务器功能 ====================
 ServerTab:Section({ Title = "自然灾害" })
 
