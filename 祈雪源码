@@ -124,7 +124,6 @@ T.autoclick = function(on)
     end
 end
 
--- 踏空（修复版）
 T.float = function(on)
     if on then
         T._f = RunService.Heartbeat:Connect(function()
@@ -365,8 +364,10 @@ AnnounceTab:CreateParagraph({
     Content = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
 })
 
--- ==================== 通用 ====================
+-- ==================== 通用（含战斗功能） ====================
 local GeneralTab = Window:CreateTab("通用", "settings")
+
+GeneralTab:CreateSection("功能开关")
 
 local toggles = {
     {"无敌模式", "god"},
@@ -390,6 +391,23 @@ local toggles = {
 }
 
 for _, it in ipairs(toggles) do
+    GeneralTab:CreateToggle({
+        Name = it[1],
+        CurrentValue = false,
+        Flag = it[2],
+        Callback = function(s)
+            pcall(function() if T[it[2]] then T[it[2]](s) end end)
+        end,
+    })
+end
+
+GeneralTab:CreateSection("战斗功能")
+
+for _, it in ipairs({
+    {"团队高亮", "teamglow"},
+    {"敌对高亮", "enemyglow"},
+    {"全图点亮", "fulllight"},
+}) do
     GeneralTab:CreateToggle({
         Name = it[1],
         CurrentValue = false,
@@ -435,24 +453,6 @@ GeneralTab:CreateInput({
         if v and v > 0 then workspace.Gravity = v end
     end,
 })
-
--- ==================== 战斗 ====================
-local CombatTab = Window:CreateTab("战斗", "swords")
-
-for _, it in ipairs({
-    {"团队高亮", "teamglow"},
-    {"敌对高亮", "enemyglow"},
-    {"全图点亮", "fulllight"},
-}) do
-    CombatTab:CreateToggle({
-        Name = it[1],
-        CurrentValue = false,
-        Flag = it[2],
-        Callback = function(s)
-            pcall(function() if T[it[2]] then T[it[2]](s) end end)
-        end,
-    })
-end
 
 -- ==================== 服务器功能 ====================
 local ServerTab = Window:CreateTab("服务器功能", "server")
