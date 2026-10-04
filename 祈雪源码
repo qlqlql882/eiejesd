@@ -361,6 +361,7 @@ T.fulllight = function(on)
     if on then LT.ClockTime = 14 end
 end
 
+-- 飞行模式（手机 + 电脑通用）
 T.fly = function(on)
     if on then
         local hrp = HRP()
@@ -374,14 +375,24 @@ T.fly = function(on)
         T._flyLoop = RunService.RenderStepped:Connect(function()
             if not T._flyBV then return end
             local cam = workspace.CurrentCamera
+            local h = HUM()
+            if not h then return end
             local move = Vector3.new()
+            local md = h.MoveDirection
+            if md.Magnitude > 0 then
+                move = move + md
+            end
             if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0, 1, 0) end
-            T._flyBV.Velocity = move * 100
+            if UIS:IsKeyDown(Enum.KeyCode.Space) or h.Jump then
+                move = move + Vector3.new(0, 1, 0)
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
+                move = move - Vector3.new(0, 1, 0)
+            end
+            T._flyBV.Velocity = move * 80
         end)
     else
         if T._flyBV then T._flyBV:Destroy(); T._flyBV = nil end
@@ -514,10 +525,10 @@ getgenv().QixueTP = function(x, y, z)
     end
 end
 
--- ==================== 主题颜色存储 ====================
+-- ==================== 主题颜色存储（黑白底） ====================
 local ThemeColors = {
-    Accent = "#00FF87",
-    Outline = "#60EFFF",
+    Accent = "#1A1A1A",
+    Outline = "#FFFFFF",
     Text = "#FFFFFF",
     Placeholder = "#888888",
 }
@@ -569,7 +580,7 @@ local SettingsTab = Window:Tab({ Title = "设置", Icon = "palette" })
 AnnounceTab:Section({ Title = "脚本信息" })
 AnnounceTab:Paragraph({
     Title = "欢迎使用 祈雪脚本",
-    Desc = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
+    Desc = "制作者 祈雪\n2026年10月1日\n持续更新\n\n开启功能后在游戏中体验效果",
 })
 
 -- ==================== 功能开关 ====================
