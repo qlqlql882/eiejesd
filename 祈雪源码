@@ -1,5 +1,7 @@
--- ==================== Rayfield 加载 ====================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- ==================== Fluent UI 加载 ====================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- ==================== 服务 ====================
 local Players = game:GetService("Players")
@@ -19,11 +21,6 @@ end
 local function HUM()
     local c = Players.LocalPlayer.Character
     return c and c:FindFirstChildOfClass("Humanoid")
-end
-local function Ntf(t, x, d)
-    pcall(function()
-        SG:SetCore("SendNotification", {Title = t, Text = x, Duration = d or 3})
-    end)
 end
 
 -- ==================== 反挂机 ====================
@@ -70,7 +67,11 @@ T.serverinfo = function(on)
                 math.floor(hrp.Position.Z))
         end
     end
-    Ntf("服务器信息", table.concat(s, "\n"), 5)
+    Fluent:Notify({
+        Title = "服务器信息",
+        Content = table.concat(s, "\n"),
+        Duration = 5,
+    })
 end
 
 T.collect = function(on)
@@ -343,32 +344,28 @@ T.fulllight = function(on)
 end
 
 -- ==================== 创建窗口 ====================
-local Window = Rayfield:CreateWindow({
-    Name = "祈雪脚本中心",
-    LoadingTitle = "祈雪脚本",
-    LoadingSubtitle = "by 祈雪",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "QixueScript",
-        FileName = "QixueConfig",
-    },
-    Discord = {Enabled = false},
-    KeySystem = false,
+local Window = Fluent:CreateWindow({
+    Title = "祈雪脚本中心",
+    SubTitle = "by 祈雪",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(500, 350),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl,
 })
 
 -- ==================== 公告 ====================
-local AnnounceTab = Window:CreateTab("公告", "megaphone")
+local AnnounceTab = Window:AddTab({ Title = "公告", Icon = "megaphone" })
 
-AnnounceTab:CreateParagraph({
+AnnounceTab:AddParagraph({
     Title = "欢迎使用 祈雪脚本",
     Content = "👤 制作者 祈雪\n📅 2026年10月1日\n🔄 持续更新\n\n🎮 开启功能后在游戏中体验效果",
 })
 
--- ==================== 通用（含所有功能） ====================
-local GeneralTab = Window:CreateTab("通用", "settings")
+-- ==================== 通用 ====================
+local GeneralTab = Window:AddTab({ Title = "通用", Icon = "settings" })
 
--- 功能开关
-GeneralTab:CreateSection("功能开关")
+local GeneralGroup = GeneralTab:AddLeftGroupbox("功能开关")
 
 local toggles = {
     {"无敌模式", "god"},
@@ -392,41 +389,37 @@ local toggles = {
 }
 
 for _, it in ipairs(toggles) do
-    GeneralTab:CreateToggle({
-        Name = it[1],
-        CurrentValue = false,
-        Flag = it[2],
+    GeneralGroup:AddToggle(it[2], {
+        Title = it[1],
+        Default = false,
         Callback = function(s)
             pcall(function() if T[it[2]] then T[it[2]](s) end end)
         end,
     })
 end
 
--- 战斗功能
-GeneralTab:CreateSection("战斗功能")
+local CombatGroup = GeneralTab:AddRightGroupbox("战斗功能")
 
 for _, it in ipairs({
     {"团队高亮", "teamglow"},
     {"敌对高亮", "enemyglow"},
     {"全图点亮", "fulllight"},
 }) do
-    GeneralTab:CreateToggle({
-        Name = it[1],
-        CurrentValue = false,
-        Flag = it[2],
+    CombatGroup:AddToggle(it[2], {
+        Title = it[1],
+        Default = false,
         Callback = function(s)
             pcall(function() if T[it[2]] then T[it[2]](s) end end)
         end,
     })
 end
 
--- 数值设置
-GeneralTab:CreateSection("数值设置")
+local NumberGroup = GeneralTab:AddRightGroupbox("数值设置")
 
-GeneralTab:CreateInput({
-    Name = "⚡ 速度",
-    CurrentValue = "16",
-    RemoveTextAfterFocusLost = false,
+NumberGroup:AddInput("speed_input", {
+    Title = "⚡ 速度",
+    Default = "16",
+    Placeholder = "16",
     Callback = function(t)
         local v = tonumber(t)
         if v and v > 0 then
@@ -435,10 +428,10 @@ GeneralTab:CreateInput({
     end,
 })
 
-GeneralTab:CreateInput({
-    Name = "🦘 跳跃",
-    CurrentValue = "50",
-    RemoveTextAfterFocusLost = false,
+NumberGroup:AddInput("jump_input", {
+    Title = "🦘 跳跃",
+    Default = "50",
+    Placeholder = "50",
     Callback = function(t)
         local v = tonumber(t)
         if v and v > 0 then
@@ -447,21 +440,23 @@ GeneralTab:CreateInput({
     end,
 })
 
-GeneralTab:CreateInput({
-    Name = "🌙 重力",
-    CurrentValue = "196",
-    RemoveTextAfterFocusLost = false,
+NumberGroup:AddInput("gravity_input", {
+    Title = "🌙 重力",
+    Default = "196",
+    Placeholder = "196",
     Callback = function(t)
         local v = tonumber(t)
         if v and v > 0 then workspace.Gravity = v end
     end,
 })
 
--- 服务器功能：自然灾害
-GeneralTab:CreateSection("服务器功能 - 自然灾害")
+-- ==================== 服务器功能 ====================
+local ServerTab = Window:AddTab({ Title = "服务器功能", Icon = "server" })
 
-GeneralTab:CreateButton({
-    Name = "🌪️ 自然灾害",
+local DisasterGroup = ServerTab:AddLeftGroupbox("自然灾害")
+
+DisasterGroup:AddButton({
+    Title = "🌪️ 自然灾害",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://pastebin.com/raw/5fKvum70"))()
@@ -469,8 +464,8 @@ GeneralTab:CreateButton({
     end,
 })
 
-GeneralTab:CreateButton({
-    Name = "🌊 自然灾害2",
+DisasterGroup:AddButton({
+    Title = "🌊 自然灾害2",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/2dgeneralspam1/scripts-and-stuff/master/scripts/LoadstringUjHI6RQpz2o8", true))()
@@ -478,11 +473,10 @@ GeneralTab:CreateButton({
     end,
 })
 
--- 服务器功能：钓鱼模拟器
-GeneralTab:CreateSection("服务器功能 - 钓鱼模拟器")
+local FishGroup = ServerTab:AddRightGroupbox("钓鱼模拟器")
 
-GeneralTab:CreateButton({
-    Name = "🎣 钓鱼模拟器1",
+FishGroup:AddButton({
+    Title = "🎣 钓鱼模拟器1",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/bebedi15/SRM-Scripts/main/Bebedi9960/SRMHub"))()
@@ -490,8 +484,8 @@ GeneralTab:CreateButton({
     end,
 })
 
-GeneralTab:CreateButton({
-    Name = "🎣 钓鱼模拟器2",
+FishGroup:AddButton({
+    Title = "🎣 钓鱼模拟器2",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://raw.githubusercontent.com/dingding123hhh/ggghjn/main/%E4%B8%81%E4%B8%81%E9%92%93%E9%B1%BC%E6%A8%A1%E6%8B%9F%E5%99%A8.txt"))()
@@ -499,22 +493,21 @@ GeneralTab:CreateButton({
     end,
 })
 
--- 服务器功能：墨水游戏
-GeneralTab:CreateSection("服务器功能 - 墨水游戏")
+local InkGroup = ServerTab:AddLeftGroupbox("墨水游戏")
 
 getgenv().SCRIPT_KEY = ""
 
-GeneralTab:CreateInput({
-    Name = "🔑 秋辞",
-    CurrentValue = "",
-    RemoveTextAfterFocusLost = false,
+InkGroup:AddInput("ink_key", {
+    Title = "🔑 秋辞",
+    Default = "",
+    Placeholder = "输入密钥",
     Callback = function(t)
         getgenv().SCRIPT_KEY = t or ""
     end,
 })
 
-GeneralTab:CreateButton({
-    Name = "🖋️ 加载 AF InkGame 墨水游戏",
+InkGroup:AddButton({
+    Title = "🖋️ 加载 AF InkGame 墨水游戏",
     Callback = function()
         pcall(function()
             loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/9efdaf7637b4106c975abbcde84522a21821bb7c09ac82f391584269c023a249/download"))()
@@ -522,10 +515,20 @@ GeneralTab:CreateButton({
     end,
 })
 
+-- ==================== 保存管理 ====================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("QixueScript")
+SaveManager:SetFolder("QixueScript/Configs")
+SaveManager:BuildConfigSection(Window:AddTab({ Title = "设置", Icon = "settings" }))
+InterfaceManager:ApplyToTab(Window:AddTab({ Title = "界面", Icon = "palette" }))
+SaveManager:LoadAutoloadConfig()
+
 -- ==================== 完成提示 ====================
-Rayfield:Notify({
+Fluent:Notify({
     Title = "祈雪脚本中心",
     Content = "加载完成",
     Duration = 5,
-    Image = nil,
 })
