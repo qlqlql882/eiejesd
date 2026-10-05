@@ -575,6 +575,7 @@ return oldNamecall(self,...)
 end)
 setreadonly(mt,true)
 end)
+end
 -- ==================== 主页 ====================
 addSection(homePage,"脚本信息")
 addLabel(homePage,"欢迎使用 Prayforsnow X")
@@ -876,7 +877,6 @@ local delta=input.Position-dragStart2
 miniMenu.Position=UDim2.new(startPos2.X.Scale,startPos2.X.Offset+delta.X,startPos2.Y.Scale,startPos2.Y.Offset+delta.Y)
 end
 end)
--- ==================== 3 按钮逻辑 ====================
 minBtn.MouseButton1Click:Connect(function()
 win.Visible=false
 miniMenu.Visible=true
@@ -899,7 +899,6 @@ xBtn.MouseButton1Click:Connect(function()
 gui.Visible=false
 TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
 end)
--- ==================== 拖动窗口 ====================
 local dragging,dragStart,startPos
 titleBar.InputBegan:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
