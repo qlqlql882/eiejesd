@@ -1,7 +1,7 @@
 --[[
     =========================================
     Prayforsnow X
-    粉色原生 UI + 淡蓝色流星
+    粉色 UI + 悬浮球 + 玩家信息
     =========================================
 ]]
 
@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local LT = game:GetService("Lighting")
 
 local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
+local LP = Players.LocalPlayer
 
 -- ==================== 淡蓝色流星启动动画 ====================
 local blur = Instance.new("BlurEffect")
@@ -193,7 +194,7 @@ task.spawn(function()
     blur:Destroy()
 end)
 
--- ==================== 粉色 UI（无标签） ====================
+-- ==================== 粉色 UI ====================
 local COLORS = {
     WindowBg = Color3.fromRGB(253, 240, 245),
     ContentBg = Color3.fromRGB(255, 252, 254),
@@ -212,8 +213,8 @@ gui.Parent = pg
 
 local win = Instance.new("Frame")
 win.Name = "Window"
-win.Size = UDim2.new(0, 620, 0, 420)
-win.Position = UDim2.new(0.5, -310, 0.5, -210)
+win.Size = UDim2.new(0, 620, 0, 470)
+win.Position = UDim2.new(0.5, -310, 0.5, -235)
 win.BackgroundColor3 = COLORS.WindowBg
 win.BackgroundTransparency = 0.05
 win.BorderSizePixel = 0
@@ -266,15 +267,10 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0.5, 0)
 closeCorner.Parent = closeBtn
 
-closeBtn.MouseButton1Click:Connect(function()
-    win.Visible = false
-    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 0}):Play()
-end)
-
--- 内容区（占满窗口下半部分）
+-- 内容区
 local content = Instance.new("Frame")
 content.Name = "Content"
-content.Size = UDim2.new(1, -24, 1, -70)
+content.Size = UDim2.new(1, -24, 1, -140)
 content.Position = UDim2.new(0, 12, 0, 58)
 content.BackgroundColor3 = COLORS.ContentBg
 content.BackgroundTransparency = 0.3
@@ -285,7 +281,6 @@ local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 14)
 contentCorner.Parent = content
 
--- 内容滚动
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, -20, 1, -20)
 scroll.Position = UDim2.new(0, 10, 0, 10)
@@ -302,7 +297,126 @@ layout.Padding = UDim.new(0, 8)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = scroll
 
--- 拖动
+-- ==================== 底部玩家信息 ====================
+local playerBar = Instance.new("Frame")
+playerBar.Name = "PlayerBar"
+playerBar.Size = UDim2.new(1, -24, 0, 60)
+playerBar.Position = UDim2.new(0, 12, 1, -72)
+playerBar.BackgroundColor3 = COLORS.ContentBg
+playerBar.BackgroundTransparency = 0.3
+playerBar.BorderSizePixel = 0
+playerBar.Parent = win
+
+local pbCorner = Instance.new("UICorner")
+pbCorner.CornerRadius = UDim.new(0, 14)
+pbCorner.Parent = playerBar
+
+-- 头像框
+local avatarFrame = Instance.new("Frame")
+avatarFrame.Size = UDim2.new(0, 44, 0, 44)
+avatarFrame.Position = UDim2.new(0, 12, 0.5, -22)
+avatarFrame.BackgroundColor3 = COLORS.Accent
+avatarFrame.BorderSizePixel = 0
+avatarFrame.Parent = playerBar
+
+local avatarCorner = Instance.new("UICorner")
+avatarCorner.CornerRadius = UDim.new(0.5, 0)
+avatarCorner.Parent = avatarFrame
+
+-- 头像图片
+local avatarImg = Instance.new("ImageLabel")
+avatarImg.Size = UDim2.new(1, -4, 1, -4)
+avatarImg.Position = UDim2.new(0, 2, 0, 2)
+avatarImg.BackgroundTransparency = 1
+avatarImg.Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LP.UserId .. "&width=150&height=150&format=png"
+avatarImg.Parent = avatarFrame
+
+local avatarImgCorner = Instance.new("UICorner")
+avatarImgCorner.CornerRadius = UDim.new(0.5, 0)
+avatarImgCorner.Parent = avatarImg
+
+-- 名字
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(1, -80, 0, 24)
+nameLabel.Position = UDim2.new(0, 68, 0, 10)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = LP.DisplayName
+nameLabel.TextColor3 = COLORS.Text
+nameLabel.TextSize = 16
+nameLabel.Font = Enum.Font.GothamBold
+nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+nameLabel.Parent = playerBar
+
+-- 用户名（@xxx）
+local userLabel = Instance.new("TextLabel")
+userLabel.Size = UDim2.new(1, -80, 0, 18)
+userLabel.Position = UDim2.new(0, 68, 0, 32)
+userLabel.BackgroundTransparency = 1
+userLabel.Text = "@" .. LP.Name
+userLabel.TextColor3 = COLORS.TextLight
+userLabel.TextSize = 13
+userLabel.Font = Enum.Font.Gotham
+userLabel.TextXAlignment = Enum.TextXAlignment.Left
+userLabel.Parent = playerBar
+
+-- ==================== 悬浮球 ====================
+local miniBtn = Instance.new("TextButton")
+miniBtn.Name = "MiniButton"
+miniBtn.Size = UDim2.new(0, 60, 0, 60)
+miniBtn.Position = UDim2.new(0, 20, 0.5, -30)
+miniBtn.BackgroundColor3 = COLORS.Accent
+miniBtn.Text = "祈"
+miniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+miniBtn.TextSize = 24
+miniBtn.Font = Enum.Font.GothamBold
+miniBtn.AutoButtonColor = false
+miniBtn.Visible = false
+miniBtn.Parent = gui
+
+local miniCorner = Instance.new("UICorner")
+miniCorner.CornerRadius = UDim.new(0.5, 0)
+miniCorner.Parent = miniBtn
+
+local miniStroke = Instance.new("UIStroke")
+miniStroke.Color = Color3.fromRGB(255, 255, 255)
+miniStroke.Thickness = 2
+miniStroke.Transparency = 0.3
+miniStroke.Parent = miniBtn
+
+miniBtn.MouseButton1Click:Connect(function()
+    miniBtn.Visible = false
+    win.Visible = true
+    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 12}):Play()
+end)
+
+local miniDragging, miniDragStart, miniStartPos
+miniBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        miniDragging = true
+        miniDragStart = input.Position
+        miniStartPos = miniBtn.Position
+    end
+end)
+miniBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        miniDragging = false
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if miniDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - miniDragStart
+        miniBtn.Position = UDim2.new(miniStartPos.X.Scale, miniStartPos.X.Offset + delta.X, miniStartPos.Y.Scale, miniStartPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- 关闭按钮：隐藏窗口，显示悬浮球
+closeBtn.MouseButton1Click:Connect(function()
+    win.Visible = false
+    miniBtn.Visible = true
+    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+end)
+
+-- ==================== 拖动主窗口 ====================
 local dragging, dragStart, startPos
 title.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
