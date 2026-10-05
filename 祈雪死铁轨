@@ -1,0 +1,44 @@
+-- ==================== Prayforsnow X ====================
+-- ==================== Obsidian UI 加载 ====================
+local repo = "https://raw.githubusercontent.com/ATLASTEAM01/Obsidian/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+-- ==================== 创建窗口 ====================
+local Window = Library:CreateWindow({
+    Title = "Prayforsnow X",
+    Footer = "v1.0",
+    Center = true,
+    AutoShow = true,
+})
+
+-- ==================== 标签 ====================
+local Tabs = {
+    Home = Window:AddTab("主页", "home"),
+    UISettings = Window:AddTab("UI设置", "settings"),
+}
+
+-- ==================== 主页 ====================
+local HomeLeft = Tabs.Home:AddLeftGroupbox("脚本信息")
+HomeLeft:AddLabel("欢迎使用 Prayforsnow X")
+HomeLeft:AddLabel("作者：祈雪")
+HomeLeft:AddLabel("版本：v1.0")
+
+local HomeRight = Tabs.Home:AddRightGroupbox("更新日志")
+HomeRight:AddLabel("v1.0 - 2026/10/05")
+HomeRight:AddLabel("· 脚本首发")
+HomeRight:AddLabel("· UI 框架搭建")
+
+-- ==================== UI 设置 ====================
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+SaveManager:SetFolder("PrayforsnowX/Configs")
+SaveManager:BuildConfigSection(Tabs.UISettings)
+ThemeManager:ApplyToTab(Tabs.UISettings)
+SaveManager:LoadAutoloadConfig()
+
+-- ==================== 完成提示 ====================
+Library:Notify("Prayforsnow X", "加载完成！", 5)
