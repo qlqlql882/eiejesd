@@ -1,0 +1,151 @@
+-- ==================== Obsidian UI ====================
+local repo = "https://cdn.jsdelivr.net/gh/ATLASTEAM01/Obsidian@main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+
+local Window = Library:CreateWindow({
+    Title = "Prayforsnow X",
+    Footer = "扫描工具",
+    Center = true,
+    AutoShow = true,
+})
+
+local Tab = Window:AddTab("扫描", "search")
+
+-- ==================== 分页显示 ====================
+local ScanGroup = Tab:AddLeftGroupbox("扫描结果")
+
+local ScanResult = {}
+local CurrentPage = 1
+local PerPage = 12
+
+local ResultLabel = ScanGroup:AddLabel("点击下方按钮开始扫描")
+local PageLabel = ScanGroup:AddLabel("第 0/0 页")
+
+local function UpdateDisplay()
+    local total = #ScanResult
+    if total == 0 then
+        ResultLabel:SetText("没有结果")
+        PageLabel:SetText("第 0/0 页")
+        return
+    end
+
+    local maxPage = math.max(1, math.ceil(total / PerPage))
+    CurrentPage = math.clamp(CurrentPage, 1, maxPage)
+
+    local startIdx = (CurrentPage - 1) * PerPage + 1
+    local endIdx = math.min(startIdx + PerPage - 1, total)
+
+    local lines = {}
+    for i = startIdx, endIdx do
+        table.insert(lines, ScanResult[i])
+    end
+
+    ResultLabel:SetText(table.concat(lines, "\n"))
+    PageLabel:SetText("第 " .. CurrentPage .. "/" .. maxPage .. " 页 · 共 " .. total .. " 项")
+end
+
+-- 翻页按钮
+local NavRow = Tab:AddLeftGroupbox("翻页")
+
+NavRow:AddButton({
+    Text = "⬅️ 上一页",
+    Func = function()
+        if CurrentPage > 1 then
+            CurrentPage = CurrentPage - 1
+            UpdateDisplay()
+        end
+    end,
+})
+
+NavRow:AddButton({
+    Text = "➡️ 下一页",
+    Func = function()
+        local total = #ScanResult
+        local maxPage = math.max(1, math.ceil(total / PerPage))
+        if CurrentPage < maxPage then
+            CurrentPage = CurrentPage + 1
+            UpdateDisplay()
+        end
+    end,
+})
+
+-- ==================== 扫描 ====================
+local ActionGroup = Tab:AddRightGroupbox("操作")
+
+ActionGroup:AddButton({
+    Text = "🔍 扫描全部物件",
+    Func = function()
+        ScanResult = {}
+        local found = {}
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name ~= "" then
+                local isChar = false
+                for _, p in ipairs(game.Players:GetPlayers()) do
+                    if p.Character and obj:IsDescendantOf(p.Character) then
+                        isChar = true
+                        break
+                    end
+                end
+                if not isChar then
+                    found[obj.Name] = (found[obj.Name] or 0) + 1
+                end
+            end
+        end
+
+        for name, num in pairs(found) do
+            table.insert(ScanResult, name .. " ×" .. num)
+        end
+        table.sort(ScanResult)
+
+        CurrentPage = 1
+        UpdateDisplay()
+    end,
+})
+
+ActionGroup:AddButton({
+    Text = "💰 只看钱相关",
+    Func = function()
+        ScanResult = {}
+        local keywords = {"coin", "cash", "money", "dollar", "gold", "bill", "gem", "credit", "bar"}
+        local found = {}
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name ~= "" then
+                local isChar = false
+                for _, p in ipairs(game.Players:GetPlayers()) do
+                    if p.Character and obj:IsDescendantOf(p.Character) then
+                        isChar = true
+                        break
+                    end
+                end
+                if not isChar then
+                    local lower = obj.Name:lower()
+                    for _, kw in ipairs(keywords) do
+                        if lower:find(kw) then
+                            found[obj.Name] = (found[obj.Name] or 0) + 1
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        for name, num in pairs(found) do
+            table.insert(ScanResult, name .. " ×" .. num)
+        end
+        table.sort(ScanResult)
+
+        CurrentPage = 1
+        UpdateDisplay()
+    end,
+})
+
+ActionGroup:AddButton({
+    Text = "🗑️ 清空结果",
+    Func = function()
+        ScanResult = {}
+        CurrentPage = 1
+        UpdateDisplay()
+    end,
+})
+
+Library:Notify("Prayforsnow X", "扫描工具加载完成", 3)
