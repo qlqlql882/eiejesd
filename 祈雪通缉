@@ -1,764 +1,922 @@
 -- ==================== 服务 ====================
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local LT = game:GetService("Lighting")
-
-local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
-local LP = Players.LocalPlayer
-
--- ==================== 颜色 ====================
-local COLORS = {
-    WindowBg = Color3.fromRGB(253, 240, 245),
-    SidebarBg = Color3.fromRGB(255, 248, 250),
-    ContentBg = Color3.fromRGB(255, 252, 254),
-    CardBg = Color3.fromRGB(255, 245, 248),
-    Accent = Color3.fromRGB(255, 158, 181),
-    AccentDark = Color3.fromRGB(230, 120, 145),
-    Text = Color3.fromRGB(120, 60, 90),
-    TextLight = Color3.fromRGB(180, 130, 155),
-    Stroke = Color3.fromRGB(255, 200, 215),
-}
-
--- ==================== 功能状态 ====================
-local State = {
-    aimbotOn = false,
-    aimbotPart = "头部",
-    aimbotTeam = "所有人",
-    aimbotFov = 150,
-    aimbotSmooth = 0.25,
-    espOn = false,
-    espTeam = "所有人",
-    flyOn = false,
-    flySpeed = 80,
-    bypassOn = false,
-}
-
--- ==================== 工具函数 ====================
+local TweenService=game:GetService("TweenService")
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+local RunService=game:GetService("RunService")
+local LT=game:GetService("Lighting")
+local HttpService=game:GetService("HttpService")
+local pg=Players.LocalPlayer:WaitForChild("PlayerGui")
+local LP=Players.LocalPlayer
+-- ==================== 颜色系统 ====================
+local DEFAULT_COLORS={WindowBg="#FDF0F5",SidebarBg="#FFF8FA",ContentBg="#FFFCFE",CardBg="#FFE1EB",Accent="#FF9EB5",AccentDark="#E67891",Text="#783C5A",TextLight="#B4829B",Stroke="#FFC8D7",MiniBg="#0F1620",MiniText="#FFFFFF",MiniBorder="#7B3FE4"}
+local HexColors={}
+for k,v in pairs(DEFAULT_COLORS) do HexColors[k]=v end
+local function C(key)
+local ok,col=pcall(function() return Color3.fromHex(HexColors[key]) end)
+if ok then return col else return Color3.fromHex("#FFFFFF") end
+end
+local function saveColors()
+pcall(function()
+if writefile then writefile("PrayColors.json",HttpService:JSONEncode(HexColors)) end
+end)
+end
+local function loadColors()
+pcall(function()
+if isfile and isfile("PrayColors.json") then
+local data=HttpService:JSONDecode(readfile("PrayColors.json"))
+for k,v in pairs(data) do HexColors[k]=v end
+end
+end)
+end
+loadColors()
+-- ==================== 状态 ====================
+local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",flyOn=false,flySpeed=80,bypassOn=false,collectTarget=nil,collectAuto=false}
+local flyUp,flyDown=false,false
 local function isTeammate(p)
-    if not LP.Team then return false end
-    return p.Team == LP.Team
+if not LP.Team then return false end
+return p.Team==LP.Team
 end
-
 -- ==================== UI 外壳 ====================
-local gui = Instance.new("ScreenGui")
-gui.Name = "PrayforsnowUI"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = pg
-
-local uiBlur = Instance.new("BlurEffect")
-uiBlur.Name = "PrayUIBlur"
-uiBlur.Size = 0
-uiBlur.Parent = LT
-
--- 主窗口
-local win = Instance.new("Frame")
-win.Size = UDim2.new(0, 680, 0, 470)
-win.Position = UDim2.new(0.5, -340, 0.5, -235)
-win.BackgroundColor3 = COLORS.WindowBg
-win.BackgroundTransparency = 0.05
-win.BorderSizePixel = 0
-win.Parent = gui
-
-local winCorner = Instance.new("UICorner")
-winCorner.CornerRadius = UDim.new(0, 18)
-winCorner.Parent = win
-
-local winStroke = Instance.new("UIStroke")
-winStroke.Color = COLORS.Stroke
-winStroke.Thickness = 1.5
-winStroke.Transparency = 0.4
-winStroke.Parent = win
-
--- 标题栏
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundTransparency = 1
-titleBar.Parent = win
-
-local titleTxt = Instance.new("TextLabel")
-titleTxt.Size = UDim2.new(1, -80, 1, 0)
-titleTxt.BackgroundTransparency = 1
-titleTxt.Text = "Prayforsnow X"
-titleTxt.TextColor3 = COLORS.Text
-titleTxt.TextSize = 20
-titleTxt.Font = Enum.Font.GothamBold
-titleTxt.TextXAlignment = Enum.TextXAlignment.Left
-titleTxt.Parent = titleBar
-
-local titlePad = Instance.new("UIPadding")
-titlePad.PaddingLeft = UDim.new(0, 24)
-titlePad.Parent = titleTxt
-
--- 关闭按钮
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 32, 0, 32)
-closeBtn.Position = UDim2.new(1, -44, 0, 10)
-closeBtn.BackgroundColor3 = COLORS.Accent
-closeBtn.Text = "×"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.TextSize = 22
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.AutoButtonColor = false
-closeBtn.Parent = win
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0.5, 0)
-closeCorner.Parent = closeBtn
-
--- 侧边栏
-local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, 150, 1, -130)
-sidebar.Position = UDim2.new(0, 12, 0, 58)
-sidebar.BackgroundColor3 = COLORS.SidebarBg
-sidebar.BackgroundTransparency = 0.4
-sidebar.BorderSizePixel = 0
-sidebar.Parent = win
-
-local sideCorner = Instance.new("UICorner")
-sideCorner.CornerRadius = UDim.new(0, 14)
-sideCorner.Parent = sidebar
-
--- 内容区
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -190, 1, -130)
-content.Position = UDim2.new(0, 172, 0, 58)
-content.BackgroundColor3 = COLORS.ContentBg
-content.BackgroundTransparency = 0.3
-content.BorderSizePixel = 0
-content.Parent = win
-
-local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 14)
-contentCorner.Parent = content
-
--- 底部玩家信息
-local playerBar = Instance.new("Frame")
-playerBar.Size = UDim2.new(1, -24, 0, 60)
-playerBar.Position = UDim2.new(0, 12, 1, -72)
-playerBar.BackgroundColor3 = COLORS.ContentBg
-playerBar.BackgroundTransparency = 0.3
-playerBar.BorderSizePixel = 0
-playerBar.Parent = win
-
-local pbCorner = Instance.new("UICorner")
-pbCorner.CornerRadius = UDim.new(0, 14)
-pbCorner.Parent = playerBar
-
-local avatarFrame = Instance.new("Frame")
-avatarFrame.Size = UDim2.new(0, 44, 0, 44)
-avatarFrame.Position = UDim2.new(0, 12, 0.5, -22)
-avatarFrame.BackgroundColor3 = COLORS.Accent
-avatarFrame.BorderSizePixel = 0
-avatarFrame.Parent = playerBar
-
-local avatarCorner = Instance.new("UICorner")
-avatarCorner.CornerRadius = UDim.new(0.5, 0)
-avatarCorner.Parent = avatarFrame
-
-local avatarImg = Instance.new("ImageLabel")
-avatarImg.Size = UDim2.new(1, -4, 1, -4)
-avatarImg.Position = UDim2.new(0, 2, 0, 2)
-avatarImg.BackgroundTransparency = 1
-avatarImg.Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LP.UserId .. "&width=150&height=150&format=png"
-avatarImg.Parent = avatarFrame
-
-local avatarImgCorner = Instance.new("UICorner")
-avatarImgCorner.CornerRadius = UDim.new(0.5, 0)
-avatarImgCorner.Parent = avatarImg
-
-local nameLabel = Instance.new("TextLabel")
-nameLabel.Size = UDim2.new(1, -80, 0, 24)
-nameLabel.Position = UDim2.new(0, 68, 0, 10)
-nameLabel.BackgroundTransparency = 1
-nameLabel.Text = LP.DisplayName
-nameLabel.TextColor3 = COLORS.Text
-nameLabel.TextSize = 16
-nameLabel.Font = Enum.Font.GothamBold
-nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-nameLabel.Parent = playerBar
-
-local userLabel = Instance.new("TextLabel")
-userLabel.Size = UDim2.new(1, -80, 0, 18)
-userLabel.Position = UDim2.new(0, 68, 0, 32)
-userLabel.BackgroundTransparency = 1
-userLabel.Text = "@" .. LP.Name
-userLabel.TextColor3 = COLORS.TextLight
-userLabel.TextSize = 13
-userLabel.Font = Enum.Font.Gotham
-userLabel.TextXAlignment = Enum.TextXAlignment.Left
-userLabel.Parent = playerBar
-
+local gui=Instance.new("ScreenGui")
+gui.Name="PrayforsnowUI"
+gui.ResetOnSpawn=false
+gui.IgnoreGuiInset=true
+gui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+gui.Parent=pg
+local uiBlur=Instance.new("BlurEffect")
+uiBlur.Name="PrayUIBlur"
+uiBlur.Size=0
+uiBlur.Parent=LT
+local win=Instance.new("Frame")
+win.Size=UDim2.new(0,680,0,470)
+win.Position=UDim2.new(0.5,-340,0.5,-235)
+win.BackgroundColor3=C("WindowBg")
+win.BackgroundTransparency=0.05
+win.BorderSizePixel=0
+win.Parent=gui
+local winCorner=Instance.new("UICorner")
+winCorner.CornerRadius=UDim.new(0,18)
+winCorner.Parent=win
+local winStroke=Instance.new("UIStroke")
+winStroke.Color=C("Stroke")
+winStroke.Thickness=1.5
+winStroke.Transparency=0.4
+winStroke.Parent=win
+local titleBar=Instance.new("Frame")
+titleBar.Size=UDim2.new(1,0,0,50)
+titleBar.BackgroundTransparency=1
+titleBar.Parent=win
+local titleTxt=Instance.new("TextLabel")
+titleTxt.Size=UDim2.new(1,-140,1,0)
+titleTxt.BackgroundTransparency=1
+titleTxt.Text="Prayforsnow X"
+titleTxt.TextColor3=C("Text")
+titleTxt.TextSize=20
+titleTxt.Font=Enum.Font.GothamBold
+titleTxt.TextXAlignment=Enum.TextXAlignment.Left
+titleTxt.Parent=titleBar
+local titlePad=Instance.new("UIPadding")
+titlePad.PaddingLeft=UDim.new(0,24)
+titlePad.Parent=titleTxt
+-- ==================== 顶部 3 按钮 ====================
+local btnBar=Instance.new("Frame")
+btnBar.Size=UDim2.new(0,110,0,32)
+btnBar.Position=UDim2.new(1,-122,0,10)
+btnBar.BackgroundTransparency=1
+btnBar.Parent=win
+local function makeTopBtn(text,posX)
+local b=Instance.new("TextButton")
+b.Size=UDim2.new(0,32,0,32)
+b.Position=UDim2.new(0,posX,0,0)
+b.BackgroundTransparency=1
+b.Text=text
+b.TextColor3=C("Text")
+b.TextSize=18
+b.Font=Enum.Font.GothamBold
+b.AutoButtonColor=false
+b.Parent=btnBar
+return b
+end
+local minBtn=makeTopBtn("—",0)
+local fullBtn=makeTopBtn("□",38)
+local xBtn=makeTopBtn("×",76)
+-- ==================== 侧边栏 ====================
+local sidebar=Instance.new("Frame")
+sidebar.Size=UDim2.new(0,150,1,-130)
+sidebar.Position=UDim2.new(0,12,0,58)
+sidebar.BackgroundColor3=C("SidebarBg")
+sidebar.BackgroundTransparency=0.4
+sidebar.BorderSizePixel=0
+sidebar.Parent=win
+local sideCorner=Instance.new("UICorner")
+sideCorner.CornerRadius=UDim.new(0,14)
+sideCorner.Parent=sidebar
+-- ==================== 内容区 ====================
+local content=Instance.new("Frame")
+content.Size=UDim2.new(1,-190,1,-130)
+content.Position=UDim2.new(0,172,0,58)
+content.BackgroundColor3=C("ContentBg")
+content.BackgroundTransparency=0.3
+content.BorderSizePixel=0
+content.Parent=win
+local contentCorner=Instance.new("UICorner")
+contentCorner.CornerRadius=UDim.new(0,14)
+contentCorner.Parent=content
+-- ==================== 底部玩家信息 ====================
+local playerBar=Instance.new("Frame")
+playerBar.Size=UDim2.new(1,-24,0,60)
+playerBar.Position=UDim2.new(0,12,1,-72)
+playerBar.BackgroundColor3=C("ContentBg")
+playerBar.BackgroundTransparency=0.3
+playerBar.BorderSizePixel=0
+playerBar.Parent=win
+local pbCorner=Instance.new("UICorner")
+pbCorner.CornerRadius=UDim.new(0,14)
+pbCorner.Parent=playerBar
+local avatarFrame=Instance.new("Frame")
+avatarFrame.Size=UDim2.new(0,44,0,44)
+avatarFrame.Position=UDim2.new(0,12,0.5,-22)
+avatarFrame.BackgroundColor3=C("Accent")
+avatarFrame.BorderSizePixel=0
+avatarFrame.Parent=playerBar
+local avatarCorner=Instance.new("UICorner")
+avatarCorner.CornerRadius=UDim.new(0.5,0)
+avatarCorner.Parent=avatarFrame
+local avatarImg=Instance.new("ImageLabel")
+avatarImg.Size=UDim2.new(1,-4,1,-4)
+avatarImg.Position=UDim2.new(0,2,0,2)
+avatarImg.BackgroundTransparency=1
+avatarImg.Image="https://www.roblox.com/headshot-thumbnail/image?userId="..LP.UserId.."&width=150&height=150&format=png"
+avatarImg.Parent=avatarFrame
+local avatarImgCorner=Instance.new("UICorner")
+avatarImgCorner.CornerRadius=UDim.new(0.5,0)
+avatarImgCorner.Parent=avatarImg
+local nameLabel=Instance.new("TextLabel")
+nameLabel.Size=UDim2.new(1,-80,0,24)
+nameLabel.Position=UDim2.new(0,68,0,10)
+nameLabel.BackgroundTransparency=1
+nameLabel.Text=LP.DisplayName
+nameLabel.TextColor3=C("Text")
+nameLabel.TextSize=16
+nameLabel.Font=Enum.Font.GothamBold
+nameLabel.TextXAlignment=Enum.TextXAlignment.Left
+nameLabel.Parent=playerBar
+local userLabel=Instance.new("TextLabel")
+userLabel.Size=UDim2.new(1,-80,0,18)
+userLabel.Position=UDim2.new(0,68,0,32)
+userLabel.BackgroundTransparency=1
+userLabel.Text="@"..LP.Name
+userLabel.TextColor3=C("TextLight")
+userLabel.TextSize=13
+userLabel.Font=Enum.Font.Gotham
+userLabel.TextXAlignment=Enum.TextXAlignment.Left
+userLabel.Parent=playerBar
 -- ==================== 标签系统 ====================
-local Tabs = {}
-local TabButtons = {}
-local tabCount = 0
-
+local Tabs={}
+local TabButtons={}
+local tabCount=0
 local function showTab(name)
-    for tabName, page in pairs(Tabs) do
-        page.Visible = (tabName == name)
-    end
-    for btnName, btn in pairs(TabButtons) do
-        if btnName == name then
-            btn.BackgroundColor3 = COLORS.Accent
-            btn.BackgroundTransparency = 0.2
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.BackgroundColor3 = COLORS.SidebarBg
-            btn.BackgroundTransparency = 1
-            btn.TextColor3 = COLORS.Text
-        end
-    end
+for tabName,page in pairs(Tabs) do page.Visible=(tabName==name) end
+for btnName,btn in pairs(TabButtons) do
+if btnName==name then
+btn.BackgroundColor3=C("Accent")
+btn.BackgroundTransparency=0.2
+btn.TextColor3=Color3.fromRGB(255,255,255)
+else
+btn.BackgroundColor3=C("SidebarBg")
+btn.BackgroundTransparency=1
+btn.TextColor3=C("Text")
 end
-
-local function createTab(name, icon)
-    tabCount = tabCount + 1
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -16, 0, 40)
-    btn.Position = UDim2.new(0, 8, 0, (tabCount - 1) * 44 + 8)
-    btn.BackgroundColor3 = COLORS.SidebarBg
-    btn.BackgroundTransparency = 1
-    btn.Text = "   " .. icon .. "   " .. name
-    btn.TextColor3 = COLORS.Text
-    btn.TextSize = 15
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.AutoButtonColor = false
-    btn.Parent = sidebar
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = btn
-
-    TabButtons[name] = btn
-
-    local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -20, 1, -20)
-    page.Position = UDim2.new(0, 10, 0, 10)
-    page.BackgroundTransparency = 1
-    page.BorderSizePixel = 0
-    page.ScrollBarThickness = 4
-    page.ScrollBarImageColor3 = COLORS.Accent
-    page.CanvasSize = UDim2.new(0, 0, 0, 0)
-    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    page.Visible = false
-    page.Parent = content
-
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 8)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Parent = page
-
-    Tabs[name] = page
-
-    btn.MouseButton1Click:Connect(function()
-        showTab(name)
-    end)
-
-    return page
 end
-
+end
+local function createTab(name,icon)
+tabCount=tabCount+1
+local btn=Instance.new("TextButton")
+btn.Size=UDim2.new(1,-16,0,40)
+btn.Position=UDim2.new(0,8,0,(tabCount-1)*44+8)
+btn.BackgroundColor3=C("SidebarBg")
+btn.BackgroundTransparency=1
+btn.Text="   "..icon.."   "..name
+btn.TextColor3=C("Text")
+btn.TextSize=15
+btn.Font=Enum.Font.GothamMedium
+btn.TextXAlignment=Enum.TextXAlignment.Left
+btn.AutoButtonColor=false
+btn.Parent=sidebar
+local c=Instance.new("UICorner")
+c.CornerRadius=UDim.new(0,10)
+c.Parent=btn
+TabButtons[name]=btn
+local page=Instance.new("ScrollingFrame")
+page.Size=UDim2.new(1,-20,1,-20)
+page.Position=UDim2.new(0,10,0,10)
+page.BackgroundTransparency=1
+page.BorderSizePixel=0
+page.ScrollBarThickness=4
+page.ScrollBarImageColor3=C("Accent")
+page.CanvasSize=UDim2.new(0,0,0,0)
+page.AutomaticCanvasSize=Enum.AutomaticSize.Y
+page.Visible=false
+page.Parent=content
+local layout=Instance.new("UIListLayout")
+layout.Padding=UDim.new(0,8)
+layout.SortOrder=Enum.SortOrder.LayoutOrder
+layout.Parent=page
+Tabs[name]=page
+btn.MouseButton1Click:Connect(function() showTab(name) end)
+return page
+end
 -- ==================== 控件辅助 ====================
-local function addLabel(page, text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -20, 0, 28)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = COLORS.Text
-    lbl.TextSize = 14
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = page
-
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 8)
-    pad.Parent = lbl
-
-    return lbl
+local function addLabel(page,text)
+local lbl=Instance.new("TextLabel")
+lbl.Size=UDim2.new(1,-20,0,28)
+lbl.BackgroundTransparency=1
+lbl.Text=text
+lbl.TextColor3=C("Text")
+lbl.TextSize=14
+lbl.Font=Enum.Font.Gotham
+lbl.TextXAlignment=Enum.TextXAlignment.Left
+lbl.Parent=page
+local pad=Instance.new("UIPadding")
+pad.PaddingLeft=UDim.new(0,8)
+pad.Parent=lbl
+return lbl
 end
-
-local function addSection(page, text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -20, 0, 32)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = COLORS.AccentDark
-    lbl.TextSize = 13
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = page
-
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 8)
-    pad.Parent = lbl
-
-    return lbl
+local function addSection(page,text)
+local lbl=Instance.new("TextLabel")
+lbl.Size=UDim2.new(1,-20,0,32)
+lbl.BackgroundTransparency=1
+lbl.Text=text
+lbl.TextColor3=C("AccentDark")
+lbl.TextSize=13
+lbl.Font=Enum.Font.GothamBold
+lbl.TextXAlignment=Enum.TextXAlignment.Left
+lbl.Parent=page
+local pad=Instance.new("UIPadding")
+pad.PaddingLeft=UDim.new(0,8)
+pad.Parent=lbl
+return lbl
 end
-
-local function addToggle(page, text, default, callback)
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -16, 0, 44)
-    row.BackgroundColor3 = COLORS.CardBg
-    row.BackgroundTransparency = 0.3
-    row.BorderSizePixel = 0
-    row.Parent = page
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = row
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0.7, 0, 1, 0)
-    lbl.Position = UDim2.new(0, 14, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = COLORS.Text
-    lbl.TextSize = 14
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = row
-
-    local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(0, 44, 0, 24)
-    bg.Position = UDim2.new(1, -58, 0.5, -12)
-    bg.BackgroundColor3 = default and COLORS.Accent or Color3.fromRGB(220, 200, 210)
-    bg.BorderSizePixel = 0
-    bg.Parent = row
-
-    local bgc = Instance.new("UICorner")
-    bgc.CornerRadius = UDim.new(0.5, 0)
-    bgc.Parent = bg
-
-    local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 20, 0, 20)
-    knob.Position = default and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
-    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    knob.BorderSizePixel = 0
-    knob.Parent = bg
-
-    local kc = Instance.new("UICorner")
-    kc.CornerRadius = UDim.new(0.5, 0)
-    kc.Parent = knob
-
-    local state = default
-
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 1, 0)
-    btn.BackgroundTransparency = 1
-    btn.Text = ""
-    btn.Parent = row
-
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        TweenService:Create(bg, TweenInfo.new(0.2), {BackgroundColor3 = state and COLORS.Accent or Color3.fromRGB(220, 200, 210)}):Play()
-        TweenService:Create(knob, TweenInfo.new(0.2), {Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)}):Play()
-        if callback then callback(state) end
-    end)
+local function addToggle(page,text,default,callback)
+local row=Instance.new("Frame")
+row.Size=UDim2.new(1,-16,0,44)
+row.BackgroundColor3=C("CardBg")
+row.BackgroundTransparency=0.3
+row.BorderSizePixel=0
+row.Parent=page
+local c=Instance.new("UICorner")
+c.CornerRadius=UDim.new(0,10)
+c.Parent=row
+local stroke=Instance.new("UIStroke")
+stroke.Color=C("Accent")
+stroke.Thickness=1.5
+stroke.Transparency=0.4
+stroke.Parent=row
+local lbl=Instance.new("TextLabel")
+lbl.Size=UDim2.new(0.7,0,1,0)
+lbl.Position=UDim2.new(0,14,0,0)
+lbl.BackgroundTransparency=1
+lbl.Text=text
+lbl.TextColor3=C("Text")
+lbl.TextSize=14
+lbl.Font=Enum.Font.Gotham
+lbl.TextXAlignment=Enum.TextXAlignment.Left
+lbl.Parent=row
+local bg=Instance.new("Frame")
+bg.Size=UDim2.new(0,44,0,24)
+bg.Position=UDim2.new(1,-58,0.5,-12)
+bg.BackgroundColor3=default and C("Accent") or Color3.fromRGB(220,200,210)
+bg.BorderSizePixel=0
+bg.Parent=row
+local bgc=Instance.new("UICorner")
+bgc.CornerRadius=UDim.new(0.5,0)
+bgc.Parent=bg
+local knob=Instance.new("Frame")
+knob.Size=UDim2.new(0,20,0,20)
+knob.Position=default and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)
+knob.BackgroundColor3=Color3.fromRGB(255,255,255)
+knob.BorderSizePixel=0
+knob.Parent=bg
+local kc=Instance.new("UICorner")
+kc.CornerRadius=UDim.new(0.5,0)
+kc.Parent=knob
+local state=default
+local btn=Instance.new("TextButton")
+btn.Size=UDim2.new(1,0,1,0)
+btn.BackgroundTransparency=1
+btn.Text=""
+btn.Parent=row
+btn.MouseButton1Click:Connect(function()
+state=not state
+TweenService:Create(bg,TweenInfo.new(0.2),{BackgroundColor3=state and C("Accent") or Color3.fromRGB(220,200,210)}):Play()
+TweenService:Create(knob,TweenInfo.new(0.2),{Position=state and UDim2.new(1,-22,0.5,-10) or UDim2.new(0,2,0.5,-10)}):Play()
+if callback then callback(state) end
+end)
 end
-
-local function addButton(page, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -16, 0, 40)
-    btn.BackgroundColor3 = COLORS.Accent
-    btn.BackgroundTransparency = 0.2
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 15
-    btn.Font = Enum.Font.GothamMedium
-    btn.AutoButtonColor = false
-    btn.Parent = page
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = btn
-
-    btn.MouseButton1Click:Connect(callback)
-    return btn
+local function addButton(page,text,callback)
+local btn=Instance.new("TextButton")
+btn.Size=UDim2.new(1,-16,0,40)
+btn.BackgroundColor3=C("Accent")
+btn.BackgroundTransparency=0.2
+btn.Text=text
+btn.TextColor3=Color3.fromRGB(255,255,255)
+btn.TextSize=15
+btn.Font=Enum.Font.GothamMedium
+btn.AutoButtonColor=false
+btn.Parent=page
+local c=Instance.new("UICorner")
+c.CornerRadius=UDim.new(0,10)
+c.Parent=btn
+btn.MouseButton1Click:Connect(callback)
+return btn
 end
-
-local function addInput(page, placeholder, default, callback)
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -16, 0, 40)
-    box.BackgroundColor3 = COLORS.CardBg
-    box.BackgroundTransparency = 0.3
-    box.BorderSizePixel = 0
-    box.Text = default or ""
-    box.PlaceholderText = placeholder
-    box.TextColor3 = COLORS.Text
-    box.PlaceholderColor3 = COLORS.TextLight
-    box.TextSize = 14
-    box.Font = Enum.Font.Gotham
-    box.ClearTextOnFocus = false
-    box.Parent = page
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = box
-
-    local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 12)
-    pad.Parent = box
-
-    box.FocusLost:Connect(function()
-        if callback then callback(box.Text) end
-    end)
-
-    return box
+local function addInput(page,placeholder,default,callback)
+local box=Instance.new("TextBox")
+box.Size=UDim2.new(1,-16,0,40)
+box.BackgroundColor3=C("CardBg")
+box.BackgroundTransparency=0.3
+box.BorderSizePixel=0
+box.Text=default or ""
+box.PlaceholderText=placeholder
+box.TextColor3=C("Text")
+box.PlaceholderColor3=C("TextLight")
+box.TextSize=14
+box.Font=Enum.Font.Gotham
+box.ClearTextOnFocus=false
+box.Parent=page
+local c=Instance.new("UICorner")
+c.CornerRadius=UDim.new(0,10)
+c.Parent=box
+local stroke=Instance.new("UIStroke")
+stroke.Color=C("Accent")
+stroke.Thickness=1.5
+stroke.Transparency=0.4
+stroke.Parent=box
+local pad=Instance.new("UIPadding")
+pad.PaddingLeft=UDim.new(0,12)
+pad.Parent=box
+box.FocusLost:Connect(function()
+if callback then callback(box.Text) end
+end)
+return box
 end
-
-local function addDropdown(page, title, options, default, callback)
-    local idx = 1
-    for i, v in ipairs(options) do
-        if v == default then idx = i end
-    end
-    local currentValue = options[idx]
-
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -16, 0, 40)
-    btn.BackgroundColor3 = COLORS.CardBg
-    btn.BackgroundTransparency = 0.3
-    btn.Text = "   " .. title .. " : " .. currentValue
-    btn.TextColor3 = COLORS.Text
-    btn.TextSize = 14
-    btn.Font = Enum.Font.Gotham
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.AutoButtonColor = false
-    btn.Parent = page
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 10)
-    c.Parent = btn
-
-    btn.MouseButton1Click:Connect(function()
-        idx = idx + 1
-        if idx > #options then idx = 1 end
-        currentValue = options[idx]
-        btn.Text = "   " .. title .. " : " .. currentValue
-        if callback then callback(currentValue) end
-    end)
-
-    return btn
+local function addDropdown(page,title,options,default,callback)
+local idx=1
+for i,v in ipairs(options) do if v==default then idx=i end end
+local currentValue=options[idx]
+local btn=Instance.new("TextButton")
+btn.Size=UDim2.new(1,-16,0,40)
+btn.BackgroundColor3=C("CardBg")
+btn.BackgroundTransparency=0.3
+btn.Text="   "..title.." : "..currentValue
+btn.TextColor3=C("Text")
+btn.TextSize=14
+btn.Font=Enum.Font.Gotham
+btn.TextXAlignment=Enum.TextXAlignment.Left
+btn.AutoButtonColor=false
+btn.Parent=page
+local c=Instance.new("UICorner")
+c.CornerRadius=UDim.new(0,10)
+c.Parent=btn
+local stroke=Instance.new("UIStroke")
+stroke.Color=C("Accent")
+stroke.Thickness=1.5
+stroke.Transparency=0.4
+stroke.Parent=btn
+btn.MouseButton1Click:Connect(function()
+idx=idx+1
+if idx>#options then idx=1 end
+currentValue=options[idx]
+btn.Text="   "..title.." : "..currentValue
+if callback then callback(currentValue) end
+end)
+return btn
 end
-
 -- ==================== 创建标签页 ====================
-local homePage = createTab("主页", "🏠")
-local funcPage = createTab("功能", "🛡️")
-local aimPage = createTab("自瞄", "🎯")
-local espPage = createTab("透视", "👁️")
-local movePage = createTab("移动", "✈️")
-local settingsPage = createTab("设置", "⚙️")
-
+local homePage=createTab("主页","🏠")
+local funcPage=createTab("功能","🛡️")
+local aimPage=createTab("自瞄","🎯")
+local espPage=createTab("透视","👁️")
+local movePage=createTab("移动","✈️")
+local collectPage=createTab("吸取","📦")
+local settingsPage=createTab("设置","⚙️")
 showTab("主页")
-
 -- ==================== 功能实现 ====================
-
--- 判断目标是否有效
-local function isValidTarget(p, teamMode)
-    if p == LP then return false end
-    if not p.Character then return false end
-    local hum = p.Character:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 then return false end
-    if teamMode == "队伍" and not isTeammate(p) then return false end
-    if teamMode == "敌人" and isTeammate(p) then return false end
-    return true
+local function isValidTarget(p,teamMode)
+if p==LP then return false end
+if not p.Character then return false end
+local hum=p.Character:FindFirstChildOfClass("Humanoid")
+if not hum or hum.Health<=0 then return false end
+if teamMode=="队伍" and not isTeammate(p) then return false end
+if teamMode=="敌人" and isTeammate(p) then return false end
+return true
 end
-
--- 自瞄
 local aimbotLoop
 local function getAimbotTarget()
-    local cam = workspace.CurrentCamera
-    local center = cam.ViewportSize / 2
-    local best, bestDist = nil, math.huge
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if isValidTarget(p, State.aimbotTeam) then
-            local part
-            if State.aimbotPart == "头部" then
-                part = p.Character:FindFirstChild("Head")
-            else
-                part = p.Character:FindFirstChild("UpperTorso") or p.Character:FindFirstChild("Torso")
-            end
-            if not part then part = p.Character:FindFirstChild("HumanoidRootPart") end
-
-            if part then
-                local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local dx = screenPos.X - center.X
-                    local dy = screenPos.Y - center.Y
-                    local dist = math.sqrt(dx*dx + dy*dy)
-                    if dist <= State.aimbotFov and dist < bestDist then
-                        best = part
-                        bestDist = dist
-                    end
-                end
-            end
-        end
-    end
-    return best
+local cam=workspace.CurrentCamera
+local center=cam.ViewportSize/2
+local best,bestDist=nil,math.huge
+for _,p in ipairs(Players:GetPlayers()) do
+if isValidTarget(p,State.aimbotTeam) then
+local part
+if State.aimbotPart=="头部" then
+part=p.Character:FindFirstChild("Head")
+else
+part=p.Character:FindFirstChild("UpperTorso") or p.Character:FindFirstChild("Torso")
 end
-
+if not part then part=p.Character:FindFirstChild("HumanoidRootPart") end
+if part then
+local screenPos,onScreen=cam:WorldToViewportPoint(part.Position)
+if onScreen then
+local dx=screenPos.X-center.X
+local dy=screenPos.Y-center.Y
+local dist=math.sqrt(dx*dx+dy*dy)
+if dist<=State.aimbotFov and dist<bestDist then
+best=part
+bestDist=dist
+end
+end
+end
+end
+end
+return best
+end
 local fovCircleGui
 local function updateFovCircle()
-    if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui = nil end
-    if not State.aimbotOn then return end
-
-    local g = Instance.new("ScreenGui")
-    g.Name = "PrayFov"
-    g.ResetOnSpawn = false
-    g.IgnoreGuiInset = true
-    g.Parent = pg
-
-    local circle = Instance.new("Frame")
-    circle.AnchorPoint = Vector2.new(0.5, 0.5)
-    circle.Position = UDim2.new(0.5, 0, 0.5, 0)
-    circle.Size = UDim2.new(0, State.aimbotFov * 2, 0, State.aimbotFov * 2)
-    circle.BackgroundTransparency = 1
-    circle.Parent = g
-
-    local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(0.5, 0)
-    cc.Parent = circle
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = COLORS.Accent
-    stroke.Thickness = 2
-    stroke.Transparency = 0.4
-    stroke.Parent = circle
-
-    fovCircleGui = g
+if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui=nil end
+if not State.aimbotOn then return end
+local g=Instance.new("ScreenGui")
+g.Name="PrayFov"
+g.ResetOnSpawn=false
+g.IgnoreGuiInset=true
+g.Parent=pg
+local circle=Instance.new("Frame")
+circle.AnchorPoint=Vector2.new(0.5,0.5)
+circle.Position=UDim2.new(0.5,0,0.5,0)
+circle.Size=UDim2.new(0,State.aimbotFov*2,0,State.aimbotFov*2)
+circle.BackgroundTransparency=1
+circle.Parent=g
+local cc=Instance.new("UICorner")
+cc.CornerRadius=UDim.new(0.5,0)
+cc.Parent=circle
+local stroke=Instance.new("UIStroke")
+stroke.Color=C("Accent")
+stroke.Thickness=2
+stroke.Transparency=0.4
+stroke.Parent=circle
+fovCircleGui=g
 end
-
 local function startAimbot()
-    if aimbotLoop then aimbotLoop:Disconnect() end
-    aimbotLoop = RunService.RenderStepped:Connect(function()
-        if not State.aimbotOn then return end
-        local target = getAimbotTarget()
-        if target then
-            local cam = workspace.CurrentCamera
-            local lookAt = CFrame.new(cam.CFrame.Position, target.Position)
-            cam.CFrame = cam.CFrame:Lerp(lookAt, State.aimbotSmooth)
-        end
-    end)
+if aimbotLoop then aimbotLoop:Disconnect() end
+aimbotLoop=RunService.RenderStepped:Connect(function()
+if not State.aimbotOn then return end
+if State.aimbotForceLock then
+if State.aimbotLockedTarget then
+local t=State.aimbotLockedTarget
+if not t.Parent then
+State.aimbotLockedTarget=nil
+else
+local hum=t.Parent:FindFirstChildOfClass("Humanoid")
+if not hum or hum.Health<=0 then
+State.aimbotLockedTarget=nil
 end
-
--- 透视
-local espHighlights = {}
+end
+end
+if not State.aimbotLockedTarget then
+State.aimbotLockedTarget=getAimbotTarget()
+end
+if State.aimbotLockedTarget then
+local cam=workspace.CurrentCamera
+local lookAt=CFrame.new(cam.CFrame.Position,State.aimbotLockedTarget.Position)
+cam.CFrame=cam.CFrame:Lerp(lookAt,State.aimbotSmooth)
+end
+else
+local target=getAimbotTarget()
+if target then
+local cam=workspace.CurrentCamera
+local lookAt=CFrame.new(cam.CFrame.Position,target.Position)
+cam.CFrame=cam.CFrame:Lerp(lookAt,State.aimbotSmooth)
+end
+State.aimbotLockedTarget=nil
+end
+end)
+end
+local espHighlights={}
 local function clearEsp()
-    for _, h in ipairs(espHighlights) do
-        pcall(function() h:Destroy() end)
-    end
-    espHighlights = {}
+for _,h in ipairs(espHighlights) do pcall(function() h:Destroy() end) end
+espHighlights={}
 end
-
 local function applyEsp()
-    clearEsp()
-    if not State.espOn then return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local show = true
-            if State.espTeam == "队伍" and not isTeammate(p) then show = false end
-            if State.espTeam == "敌人" and isTeammate(p) then show = false end
-            if show then
-                local color = isTeammate(p) and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(255, 0, 0)
-                pcall(function()
-                    local h = Instance.new("Highlight")
-                    h.FillColor = color
-                    h.OutlineColor = color
-                    h.FillTransparency = 0.5
-                    h.Parent = p.Character
-                    table.insert(espHighlights, h)
-                end)
-            end
-        end
-    end
+clearEsp()
+if not State.espOn then return end
+for _,p in ipairs(Players:GetPlayers()) do
+if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+local show=true
+if State.espTeam=="队伍" and not isTeammate(p) then show=false end
+if State.espTeam=="敌人" and isTeammate(p) then show=false end
+if show then
+local color=isTeammate(p) and Color3.fromRGB(0,150,255) or Color3.fromRGB(255,0,0)
+pcall(function()
+local h=Instance.new("Highlight")
+h.FillColor=color
+h.OutlineColor=color
+h.FillTransparency=0.5
+h.Parent=p.Character
+table.insert(espHighlights,h)
+end)
 end
-
--- 飞行
-local flyBV, flyLoop
+end
+end
+end
+local flyBV,flyLoop
 local function startFly()
-    local char = LP.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    flyBV = Instance.new("BodyVelocity")
-    flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    flyBV.Velocity = Vector3.new(0, 0, 0)
-    flyBV.Parent = hrp
-
-    flyLoop = RunService.RenderStepped:Connect(function()
-        if not State.flyOn or not flyBV then return end
-        local c = LP.Character
-        if not c then return end
-        local hum = c:FindFirstChildOfClass("Humanoid")
-        if not hum then return end
-        flyBV.Velocity = hum.MoveDirection * State.flySpeed
-    end)
+local char=LP.Character
+if not char then return end
+local hrp=char:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+flyBV=Instance.new("BodyVelocity")
+flyBV.MaxForce=Vector3.new(1e5,1e5,1e5)
+flyBV.Velocity=Vector3.new(0,0,0)
+flyBV.Parent=hrp
+flyLoop=RunService.RenderStepped:Connect(function()
+if not State.flyOn or not flyBV then return end
+local c=LP.Character
+if not c then return end
+local hum=c:FindFirstChildOfClass("Humanoid")
+if not hum then return end
+local move=hum.MoveDirection*State.flySpeed
+if flyUp then move=move+Vector3.new(0,State.flySpeed*0.5,0) end
+if flyDown then move=move-Vector3.new(0,State.flySpeed*0.5,0) end
+flyBV.Velocity=move
+end)
 end
-
 local function stopFly()
-    if flyBV then flyBV:Destroy(); flyBV = nil end
-    if flyLoop then flyLoop:Disconnect(); flyLoop = nil end
+if flyBV then flyBV:Destroy(); flyBV=nil end
+if flyLoop then flyLoop:Disconnect(); flyLoop=nil end
+flyUp=false
+flyDown=false
 end
-
--- 绕过反作弊
 local function enableBypass()
-    if not hookmetamethod or not newcclosure then return end
-    pcall(function()
-        local mt = getrawmetatable(game)
-        local oldNamecall = mt.__namecall
-        setreadonly(mt, false)
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if State.bypassOn then
-                if method == "Kick" and self == LP then return end
-                if method == "FireServer" and tostring(self) == "PlayerEvent" then
-                    local a = {...}
-                    if a[1] == "combatMode" or a[1] == "takeDamage" then return end
-                end
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end)
+if not hookmetamethod or not newcclosure then return end
+pcall(function()
+local mt=getrawmetatable(game)
+local oldNamecall=mt.__namecall
+setreadonly(mt,false)
+mt.__namecall=newcclosure(function(self,...)
+local method=getnamecallmethod()
+if State.bypassOn then
+if method=="Kick" and self==LP then return end
+if method=="FireServer" and tostring(self)=="PlayerEvent" then
+local a={...}
+if a[1]=="combatMode" or a[1]=="takeDamage" then return end
 end
-
+end
+return oldNamecall(self,...)
+end)
+setreadonly(mt,true)
+end)
 -- ==================== 主页 ====================
-addSection(homePage, "脚本信息")
-addLabel(homePage, "欢迎使用 Prayforsnow X")
-addLabel(homePage, "作者：祈雪")
-addLabel(homePage, "版本：v1.0")
-
+addSection(homePage,"脚本信息")
+addLabel(homePage,"欢迎使用 Prayforsnow X")
+addLabel(homePage,"作者：祈雪")
+addLabel(homePage,"版本：v1.0")
 -- ==================== 功能页 ====================
-addSection(funcPage, "基础功能")
-addToggle(funcPage, "🛡️ 绕过反作弊", false, function(s)
-    State.bypassOn = s
-    if s then enableBypass() end
+addSection(funcPage,"基础功能")
+addToggle(funcPage,"🛡️ 绕过反作弊",false,function(s)
+State.bypassOn=s
+if s then enableBypass() end
 end)
-
 -- ==================== 自瞄页 ====================
-addSection(aimPage, "自瞄设置")
-addToggle(aimPage, "🎯 自瞄", false, function(s)
-    State.aimbotOn = s
-    if s then
-        startAimbot()
-        updateFovCircle()
-    else
-        if aimbotLoop then aimbotLoop:Disconnect(); aimbotLoop = nil end
-        if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui = nil end
-    end
+addSection(aimPage,"自瞄设置")
+addToggle(aimPage,"🎯 自瞄",false,function(s)
+State.aimbotOn=s
+if s then
+startAimbot()
+updateFovCircle()
+else
+if aimbotLoop then aimbotLoop:Disconnect(); aimbotLoop=nil end
+if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui=nil end
+end
 end)
-addDropdown(aimPage, "锁定部位", {"头部", "身体"}, "头部", function(v)
-    State.aimbotPart = v
+addDropdown(aimPage,"锁定部位",{"头部","身体"},"头部",function(v) State.aimbotPart=v end)
+addDropdown(aimPage,"阵营",{"所有人","队伍","敌人"},"所有人",function(v) State.aimbotTeam=v end)
+addInput(aimPage,"圈半径（像素）","150",function(v)
+State.aimbotFov=tonumber(v) or 150
+updateFovCircle()
 end)
-addDropdown(aimPage, "阵营", {"所有人", "队伍", "敌人"}, "所有人", function(v)
-    State.aimbotTeam = v
+addInput(aimPage,"平滑度（0.05-0.5）","0.25",function(v)
+State.aimbotSmooth=tonumber(v) or 0.25
 end)
-addInput(aimPage, "圈半径（像素）", "150", function(v)
-    State.aimbotFov = tonumber(v) or 150
-    updateFovCircle()
+addToggle(aimPage,"🔒 强制锁定（出圈不解锁）",false,function(s)
+State.aimbotForceLock=s
+if not s then State.aimbotLockedTarget=nil end
 end)
-addInput(aimPage, "平滑度（0.05-0.5）", "0.25", function(v)
-    State.aimbotSmooth = tonumber(v) or 0.25
-end)
-
 -- ==================== 透视页 ====================
-addSection(espPage, "透视设置")
-addToggle(espPage, "👁️ 透视", false, function(s)
-    State.espOn = s
-    applyEsp()
+addSection(espPage,"透视设置")
+addToggle(espPage,"👁️ 透视",false,function(s)
+State.espOn=s
+applyEsp()
 end)
-addDropdown(espPage, "阵营", {"所有人", "队伍", "敌人"}, "所有人", function(v)
-    State.espTeam = v
-    applyEsp()
+addDropdown(espPage,"阵营",{"所有人","队伍","敌人"},"所有人",function(v)
+State.espTeam=v
+applyEsp()
 end)
-
--- 自动刷新透视（玩家进出）
 task.spawn(function()
-    while true do
-        task.wait(2)
-        if State.espOn then applyEsp() end
-    end
+while true do
+task.wait(2)
+if State.espOn then applyEsp() end
+end
 end)
-
 -- ==================== 移动页 ====================
-addSection(movePage, "飞行")
-addToggle(movePage, "🕊️ 飞行模式", false, function(s)
-    State.flyOn = s
-    if s then startFly() else stopFly() end
+addSection(movePage,"飞行")
+addToggle(movePage,"🕊️ 飞行模式",false,function(s)
+State.flyOn=s
+if s then startFly() else stopFly() end
 end)
-addInput(movePage, "飞行速度", "80", function(v)
-    State.flySpeed = tonumber(v) or 80
+addInput(movePage,"飞行速度","80",function(v)
+State.flySpeed=tonumber(v) or 80
 end)
-
-addSection(movePage, "传送坐标")
-addInput(movePage, "X", "0", function(v) State.tpX = tonumber(v) or 0 end)
-addInput(movePage, "Y", "0", function(v) State.tpY = tonumber(v) or 0 end)
-addInput(movePage, "Z", "0", function(v) State.tpZ = tonumber(v) or 0 end)
-addButton(movePage, "📍 传送到坐标", function()
-    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = CFrame.new(State.tpX or 0, State.tpY or 0, State.tpZ or 0)
-    end
+local upBtn=Instance.new("TextButton")
+upBtn.Size=UDim2.new(1,-16,0,40)
+upBtn.BackgroundColor3=C("Accent")
+upBtn.BackgroundTransparency=0.2
+upBtn.Text="⬆️ 上升（按住）"
+upBtn.TextColor3=Color3.fromRGB(255,255,255)
+upBtn.TextSize=15
+upBtn.Font=Enum.Font.GothamMedium
+upBtn.AutoButtonColor=false
+upBtn.Parent=movePage
+local upC=Instance.new("UICorner")
+upC.CornerRadius=UDim.new(0,10)
+upC.Parent=upBtn
+upBtn.MouseButton1Down:Connect(function() flyUp=true end)
+upBtn.MouseButton1Up:Connect(function() flyUp=false end)
+upBtn.MouseLeave:Connect(function() flyUp=false end)
+local downBtn=Instance.new("TextButton")
+downBtn.Size=UDim2.new(1,-16,0,40)
+downBtn.BackgroundColor3=C("Accent")
+downBtn.BackgroundTransparency=0.2
+downBtn.Text="⬇️ 下降（按住）"
+downBtn.TextColor3=Color3.fromRGB(255,255,255)
+downBtn.TextSize=15
+downBtn.Font=Enum.Font.GothamMedium
+downBtn.AutoButtonColor=false
+downBtn.Parent=movePage
+local downC=Instance.new("UICorner")
+downC.CornerRadius=UDim.new(0,10)
+downC.Parent=downBtn
+downBtn.MouseButton1Down:Connect(function() flyDown=true end)
+downBtn.MouseButton1Up:Connect(function() flyDown=false end)
+downBtn.MouseLeave:Connect(function() flyDown=false end)
+addSection(movePage,"传送坐标")
+addInput(movePage,"X","0",function(v) State.tpX=tonumber(v) or 0 end)
+addInput(movePage,"Y","0",function(v) State.tpY=tonumber(v) or 0 end)
+addInput(movePage,"Z","0",function(v) State.tpZ=tonumber(v) or 0 end)
+addButton(movePage,"📍 传送到坐标",function()
+local hrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if hrp then
+hrp.CFrame=CFrame.new(State.tpX or 0,State.tpY or 0,State.tpZ or 0)
+end
 end)
-
+-- ==================== 吸取页 ====================
+addSection(collectPage,"扫描")
+local ScanResult={}
+local ScanObjects={}
+local scanStatus=addLabel(collectPage,"状态：未扫描")
+local collectDropdown=addDropdown(collectPage,"吸取目标",{"点扫描"},"点扫描",function(v)
+if v and v~="点扫描" then
+State.collectTarget=ScanObjects[v] or v
+end
+end)
+addButton(collectPage,"🔍 扫描全图物品",function()
+ScanResult={}
+ScanObjects={}
+local found={}
+for _,obj in ipairs(workspace:GetDescendants()) do
+if obj:IsA("BasePart") and obj.Name~="" then
+local isChar=false
+for _,p in ipairs(Players:GetPlayers()) do
+if p.Character and obj:IsDescendantOf(p.Character) then
+isChar=true
+break
+end
+end
+if not isChar then
+found[obj.Name]=(found[obj.Name] or 0)+1
+end
+end
+end
+for name,num in pairs(found) do
+local display=name.." ×"..num
+table.insert(ScanResult,display)
+ScanObjects[display]=name
+end
+table.sort(ScanResult)
+scanStatus.Text="状态：共 "..#ScanResult.." 项"
+if #ScanResult>0 then
+collectDropdown.Text="   吸取目标 : "..ScanResult[1]
+State.collectTarget=ScanObjects[ScanResult[1]]
+end
+end)
+local collectInterval=0.1
+addInput(collectPage,"吸取间隔（秒）","0.1",function(v)
+collectInterval=tonumber(v) or 0.1
+end)
+addButton(collectPage,"🎯 吸 15 个到脚下",function()
+if not State.collectTarget then
+scanStatus.Text="状态：请先扫描并选目标"
+return
+end
+local char=LP.Character
+local hrp=char and char:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+local count=0
+for _,obj in ipairs(workspace:GetDescendants()) do
+if obj:IsA("BasePart") and obj.Name==State.collectTarget then
+pcall(function() obj.CFrame=hrp.CFrame end)
+count=count+1
+if count>=15 then break end
+end
+end
+scanStatus.Text="状态：已吸 "..count.." 个"
+end)
+local collectStatus=addLabel(collectPage,"状态：未开启")
+addToggle(collectPage,"🔁 自动吸取",false,function(s)
+State.collectAuto=s
+if s then
+if not State.collectTarget then
+collectStatus.Text="状态：请先选目标"
+return
+end
+task.spawn(function()
+local total=0
+while State.collectAuto do
+local char=LP.Character
+local hrp=char and char:FindFirstChild("HumanoidRootPart")
+if hrp then
+local count=0
+for _,obj in ipairs(workspace:GetDescendants()) do
+if obj:IsA("BasePart") and obj.Name==State.collectTarget then
+pcall(function() obj.CFrame=hrp.CFrame end)
+count=count+1
+total=total+1
+if count>=15 then break end
+end
+end
+end
+collectStatus.Text="状态：运行中 | 共 "..total.." 个"
+task.wait(collectInterval)
+end
+collectStatus.Text="状态：已停止 | 共 "..total.." 个"
+end)
+end
+end)
 -- ==================== 设置页 ====================
-addSection(settingsPage, "关于")
-addLabel(settingsPage, "Prayforsnow X v1.0")
-addLabel(settingsPage, "作者：祈雪")
-addLabel(settingsPage, "UI：粉色主题")
-
--- ==================== 悬浮球 ====================
-local miniBtn = Instance.new("TextButton")
-miniBtn.Size = UDim2.new(0, 60, 0, 60)
-miniBtn.Position = UDim2.new(0, 20, 0.5, -30)
-miniBtn.BackgroundColor3 = COLORS.Accent
-miniBtn.Text = "祈"
-miniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-miniBtn.TextSize = 24
-miniBtn.Font = Enum.Font.GothamBold
-miniBtn.AutoButtonColor = false
-miniBtn.Visible = false
-miniBtn.Parent = gui
-
-local miniCorner = Instance.new("UICorner")
-miniCorner.CornerRadius = UDim.new(0.5, 0)
-miniCorner.Parent = miniBtn
-
-miniBtn.MouseButton1Click:Connect(function()
-    miniBtn.Visible = false
-    win.Visible = true
-    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 12}):Play()
+addSection(settingsPage,"脚本信息")
+addLabel(settingsPage,"Prayforsnow X v1.0")
+addLabel(settingsPage,"作者：祈雪")
+addSection(settingsPage,"颜色自定义")
+local colorKeys={
+{name="窗口背景",key="WindowBg"},
+{name="侧边栏",key="SidebarBg"},
+{name="内容区",key="ContentBg"},
+{name="控件背景",key="CardBg"},
+{name="主色",key="Accent"},
+{name="文字色",key="Text"},
+{name="边框色",key="Stroke"},
+}
+for _,item in ipairs(colorKeys) do
+addInput(settingsPage,item.name.."（十六进制）",HexColors[item.key],function(v)
+if v and v:sub(1,1)=="#" then
+HexColors[item.key]=v
+saveColors()
+end
 end)
-
-closeBtn.MouseButton1Click:Connect(function()
-    win.Visible = false
-    miniBtn.Visible = true
-    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+end
+addButton(settingsPage,"↩️ 恢复默认颜色",function()
+for k,v in pairs(DEFAULT_COLORS) do
+HexColors[k]=v
+end
+saveColors()
 end)
-
--- ==================== 拖动窗口 ====================
-local dragging, dragStart, startPos
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = win.Position
-    end
+-- ==================== 悬浮菜单 ====================
+local miniMenu=Instance.new("Frame")
+miniMenu.Name="MiniMenu"
+miniMenu.Size=UDim2.new(0,200,0,50)
+miniMenu.Position=UDim2.new(0,20,0.5,-25)
+miniMenu.BackgroundColor3=C("MiniBg")
+miniMenu.BackgroundTransparency=0.1
+miniMenu.BorderSizePixel=0
+miniMenu.Visible=false
+miniMenu.Parent=gui
+local miniCorner=Instance.new("UICorner")
+miniCorner.CornerRadius=UDim.new(1,0)
+miniCorner.Parent=miniMenu
+local miniStroke=Instance.new("UIStroke")
+miniStroke.Thickness=2
+miniStroke.Color=C("MiniBorder")
+miniStroke.Parent=miniMenu
+local dragArea=Instance.new("TextButton")
+dragArea.Size=UDim2.new(0,50,1,0)
+dragArea.Position=UDim2.new(0,0,0,0)
+dragArea.BackgroundTransparency=1
+dragArea.Text="✥"
+dragArea.TextColor3=Color3.fromHex("#8899AA")
+dragArea.TextSize=20
+dragArea.Font=Enum.Font.GothamBold
+dragArea.Parent=miniMenu
+local sep=Instance.new("Frame")
+sep.Size=UDim2.new(0,1,0.6,0)
+sep.Position=UDim2.new(0,50,0.2,0)
+sep.BackgroundColor3=Color3.fromHex("#2A3540")
+sep.BorderSizePixel=0
+sep.Parent=miniMenu
+local logoArea=Instance.new("TextButton")
+logoArea.Size=UDim2.new(0,60,1,0)
+logoArea.Position=UDim2.new(0,51,0,0)
+logoArea.BackgroundTransparency=1
+logoArea.Text="PS"
+logoArea.TextColor3=C("MiniText")
+logoArea.TextSize=18
+logoArea.Font=Enum.Font.GothamBold
+logoArea.Parent=miniMenu
+local nameArea=Instance.new("TextButton")
+nameArea.Size=UDim2.new(1,-111,1,0)
+nameArea.Position=UDim2.new(0,111,0,0)
+nameArea.BackgroundTransparency=1
+nameArea.Text="Prayforsnow X"
+nameArea.TextColor3=C("MiniText")
+nameArea.TextSize=14
+nameArea.Font=Enum.Font.Gotham
+nameArea.TextXAlignment=Enum.TextXAlignment.Left
+nameArea.Parent=miniMenu
+local function openWindow()
+miniMenu.Visible=false
+win.Visible=true
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=12}):Play()
+end
+logoArea.MouseButton1Click:Connect(openWindow)
+nameArea.MouseButton1Click:Connect(openWindow)
+local dragging2,dragStart2,startPos2
+dragArea.InputBegan:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging2=true
+dragStart2=input.Position
+startPos2=miniMenu.Position
+end
 end)
-titleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
+dragArea.InputEnded:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging2=false
+end
 end)
 UIS.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        win.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+if dragging2 and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+local delta=input.Position-dragStart2
+miniMenu.Position=UDim2.new(startPos2.X.Scale,startPos2.X.Offset+delta.X,startPos2.Y.Scale,startPos2.Y.Offset+delta.Y)
+end
 end)
-
-TweenService:Create(uiBlur, TweenInfo.new(0.4), {Size = 12}):Play()
+-- ==================== 3 按钮逻辑 ====================
+minBtn.MouseButton1Click:Connect(function()
+win.Visible=false
+miniMenu.Visible=true
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
+end)
+local isFullscreen=false
+local originalSize=win.Size
+local originalPos=win.Position
+fullBtn.MouseButton1Click:Connect(function()
+isFullscreen=not isFullscreen
+if isFullscreen then
+TweenService:Create(win,TweenInfo.new(0.3),{Size=UDim2.new(1,0,1,0),Position=UDim2.new(0,0,0,0)}):Play()
+fullBtn.Text="❐"
+else
+TweenService:Create(win,TweenInfo.new(0.3),{Size=originalSize,Position=originalPos}):Play()
+fullBtn.Text="□"
+end
+end)
+xBtn.MouseButton1Click:Connect(function()
+gui.Visible=false
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
+end)
+-- ==================== 拖动窗口 ====================
+local dragging,dragStart,startPos
+titleBar.InputBegan:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging=true
+dragStart=input.Position
+startPos=win.Position
+end
+end)
+titleBar.InputEnded:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging=false
+end
+end)
+UIS.InputChanged:Connect(function(input)
+if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+local delta=input.Position-dragStart
+win.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+end
+end)
+TweenService:Create(uiBlur,TweenInfo.new(0.4),{Size=12}):Play()
