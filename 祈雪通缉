@@ -30,7 +30,7 @@ end)
 end
 loadColors()
 -- ==================== 状态 ====================
-local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",espEnhancedOn=false,flyOn=false,flySpeed=80,bypassOn=false,collectTarget=nil,collectAuto=false,presetName="default"}
+local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",espEnhancedOn=false,flyOn=false,flySpeed=35,bypassOn=false,collectTarget=nil,collectAuto=false,presetName="default",musicId="1837879082",musicVolume=1}
 local flyUp,flyDown=false,false
 local function isTeammate(p)
 if not LP.Team then return false end
@@ -78,7 +78,6 @@ titleTxt.Parent=titleBar
 local titlePad=Instance.new("UIPadding")
 titlePad.PaddingLeft=UDim.new(0,24)
 titlePad.Parent=titleTxt
--- ==================== 顶部 3 按钮 ====================
 local btnBar=Instance.new("Frame")
 btnBar.Size=UDim2.new(0,110,0,32)
 btnBar.Position=UDim2.new(1,-122,0,10)
@@ -100,7 +99,6 @@ end
 local minBtn=makeTopBtn("—",0)
 local fullBtn=makeTopBtn("□",38)
 local xBtn=makeTopBtn("×",76)
--- ==================== 侧边栏 ====================
 local sidebar=Instance.new("Frame")
 sidebar.Size=UDim2.new(0,150,1,-130)
 sidebar.Position=UDim2.new(0,12,0,58)
@@ -111,7 +109,6 @@ sidebar.Parent=win
 local sideCorner=Instance.new("UICorner")
 sideCorner.CornerRadius=UDim.new(0,14)
 sideCorner.Parent=sidebar
--- ==================== 内容区 ====================
 local content=Instance.new("Frame")
 content.Size=UDim2.new(1,-190,1,-130)
 content.Position=UDim2.new(0,172,0,58)
@@ -122,7 +119,6 @@ content.Parent=win
 local contentCorner=Instance.new("UICorner")
 contentCorner.CornerRadius=UDim.new(0,14)
 contentCorner.Parent=content
--- ==================== 底部玩家信息 ====================
 local playerBar=Instance.new("Frame")
 playerBar.Size=UDim2.new(1,-24,0,60)
 playerBar.Position=UDim2.new(0,12,1,-72)
@@ -400,6 +396,7 @@ local espPage=createTab("透视","👁️")
 local movePage=createTab("移动","✈️")
 local collectPage=createTab("吸取","📦")
 local visualPage=createTab("界面","🖼️")
+local musicPage=createTab("音乐","🎵")
 local settingsPage=createTab("设置","⚙️")
 showTab("主页")
 -- ==================== 功能实现 ====================
@@ -529,6 +526,7 @@ end
 end
 end
 end
+-- ==================== 飞行（斜跳反检测） ====================
 local flyBV,flyLoop
 local function startFly()
 local char=LP.Character
@@ -536,6 +534,7 @@ if not char then return end
 local hrp=char:FindFirstChild("HumanoidRootPart")
 if not hrp then return end
 flyBV=Instance.new("BodyVelocity")
+flyBV.Name="PrayFlyBV"
 flyBV.MaxForce=Vector3.new(1e5,1e5,1e5)
 flyBV.Velocity=Vector3.new(0,0,0)
 flyBV.Parent=hrp
@@ -545,10 +544,26 @@ local c=LP.Character
 if not c then return end
 local hum=c:FindFirstChildOfClass("Humanoid")
 if not hum then return end
-local move=hum.MoveDirection*State.flySpeed
-if flyUp then move=move+Vector3.new(0,State.flySpeed*0.5,0) end
-if flyDown then move=move-Vector3.new(0,State.flySpeed*0.5,0) end
-flyBV.Velocity=move
+local hrp2=c:FindFirstChild("HumanoidRootPart")
+if not hrp2 then return end
+local moveDir=hum.MoveDirection
+if flyUp then
+flyBV.Velocity=Vector3.new(moveDir.X*25,20,moveDir.Z*25)
+elseif flyDown then
+flyBV.Velocity=Vector3.new(moveDir.X*25,-20,moveDir.Z*25)
+elseif moveDir.Magnitude>0 then
+flyBV.Velocity=moveDir*35+Vector3.new(0,12,0)
+else
+flyBV.Velocity=Vector3.new(0,-10,0)
+end
+local ray=Ray.new(hrp2.Position,Vector3.new(0,-200,0))
+local hit,pos=workspace:FindPartOnRay(ray,c)
+if hit and pos then
+local height=hrp2.Position.Y-pos.Y
+if height>25 and flyBV.Velocity.Y>0 then
+flyBV.Velocity=Vector3.new(flyBV.Velocity.X,0,flyBV.Velocity.Z)
+end
+end
 end)
 end
 local function stopFly()
@@ -557,6 +572,7 @@ if flyLoop then flyLoop:Disconnect(); flyLoop=nil end
 flyUp=false
 flyDown=false
 end
+-- ==================== 绕过反作弊 ====================
 local function enableBypass()
 if not hookmetamethod or not newcclosure then return end
 pcall(function()
@@ -582,6 +598,13 @@ addSection(homePage,"脚本信息")
 addLabel(homePage,"欢迎使用 Prayforsnow X")
 addLabel(homePage,"作者：祈雪")
 addLabel(homePage,"版本：v1.0")
+addSection(homePage,"更新日志")
+addLabel(homePage,"v1.0 - 2026/10/05")
+addLabel(homePage,"· 脚本首发")
+addLabel(homePage,"· 粉色主题 + 悬浮菜单")
+addLabel(homePage,"· 自瞄 / 透视 / 飞行 / 吸取")
+addLabel(homePage,"· 斜跳飞行反检测")
+addLabel(homePage,"· 色块调色板 + 音乐功能")
 -- ==================== 功能页 ====================
 addSection(funcPage,"基础功能")
 addToggle(funcPage,"🛡️ 绕过反作弊",false,function(s)
@@ -638,8 +661,8 @@ addToggle(movePage,"🕊️ 飞行模式",false,function(s)
 State.flyOn=s
 if s then startFly() else stopFly() end
 end)
-addInput(movePage,"飞行速度","80",function(v)
-State.flySpeed=tonumber(v) or 80
+addInput(movePage,"飞行速度","35",function(v)
+State.flySpeed=tonumber(v) or 35
 end)
 local upBtn=Instance.new("TextButton")
 upBtn.Size=UDim2.new(1,-16,0,40)
@@ -849,6 +872,74 @@ watermark.Parent=watermarkGui
 addToggle(visualPage,"💧 水印",true,function(s)
 watermarkGui.Enabled=s
 end)
+-- ==================== 音乐页 ====================
+addSection(musicPage,"播放控制")
+local currentMusic=nil
+addInput(musicPage,"音乐 ID（数字）","1837879082",function(v)
+State.musicId=v
+end)
+addInput(musicPage,"音量（0-10）","1",function(v)
+State.musicVolume=tonumber(v) or 1
+if currentMusic then
+currentMusic.Volume=State.musicVolume
+end
+end)
+addButton(musicPage,"▶️ 播放",function()
+if not State.musicId or State.musicId=="" then return end
+if currentMusic then
+currentMusic:Destroy()
+currentMusic=nil
+end
+local sound=Instance.new("Sound")
+sound.SoundId="rbxassetid://"..State.musicId
+sound.Volume=State.musicVolume
+sound.Looped=true
+sound.Parent=game:GetService("SoundService")
+sound:Play()
+currentMusic=sound
+end)
+addButton(musicPage,"⏸️ 暂停",function()
+if currentMusic then
+currentMusic:Pause()
+end
+end)
+addButton(musicPage,"▶️ 继续",function()
+if currentMusic then
+currentMusic:Resume()
+end
+end)
+addButton(musicPage,"⏹️ 停止",function()
+if currentMusic then
+currentMusic:Destroy()
+currentMusic=nil
+end
+end)
+addSection(musicPage,"预设音乐")
+local presets={
+{"🎵 歌1","1837879082"},
+{"🎵 歌2","1836316694"},
+{"🎵 歌3","1839580864"},
+{"🎵 歌4","1840388844"},
+{"🎵 歌5","1835900519"},
+}
+for _,preset in ipairs(presets) do
+addButton(musicPage,preset[1],function()
+if currentMusic then
+currentMusic:Destroy()
+currentMusic=nil
+end
+local sound=Instance.new("Sound")
+sound.SoundId="rbxassetid://"..preset[2]
+sound.Volume=State.musicVolume
+sound.Looped=true
+sound.Parent=game:GetService("SoundService")
+sound:Play()
+currentMusic=sound
+end)
+end
+addSection(musicPage,"音乐库")
+addLabel(musicPage,"点上方按钮播放预设")
+addLabel(musicPage,"或填自己的 ID 后点播放")
 -- ==================== 设置页 ====================
 addSection(settingsPage,"脚本信息")
 addLabel(settingsPage,"Prayforsnow X v1.0")
@@ -862,14 +953,144 @@ local colorKeys={
 {name="主色",key="Accent"},
 {name="文字色",key="Text"},
 {name="边框色",key="Stroke"},
+{name="悬浮菜单背景",key="MiniBg"},
+{name="悬浮菜单文字",key="MiniText"},
+{name="悬浮菜单边框",key="MiniBorder"},
 }
-for _,item in ipairs(colorKeys) do
-addInput(settingsPage,item.name.."（十六进制）",HexColors[item.key],function(v)
-if v and v:sub(1,1)=="#" then
-HexColors[item.key]=v
+local function makeColorRow(key,label)
+local row=Instance.new("Frame")
+row.Size=UDim2.new(1,-16,0,44)
+row.BackgroundColor3=C("CardBg")
+row.BackgroundTransparency=0.3
+row.BorderSizePixel=0
+row.Parent=settingsPage
+local rc=Instance.new("UICorner")
+rc.CornerRadius=UDim.new(0,10)
+rc.Parent=row
+local stroke=Instance.new("UIStroke")
+stroke.Color=C("Accent")
+stroke.Thickness=1.5
+stroke.Transparency=0.4
+stroke.Parent=row
+local lbl=Instance.new("TextLabel")
+lbl.Size=UDim2.new(0.5,0,1,0)
+lbl.Position=UDim2.new(0,14,0,0)
+lbl.BackgroundTransparency=1
+lbl.Text=label
+lbl.TextColor3=C("Text")
+lbl.TextSize=14
+lbl.Font=Enum.Font.Gotham
+lbl.TextXAlignment=Enum.TextXAlignment.Left
+lbl.Parent=row
+local hexLbl=Instance.new("TextLabel")
+hexLbl.Size=UDim2.new(0,90,1,0)
+hexLbl.Position=UDim2.new(0.5,0,0,0)
+hexLbl.BackgroundTransparency=1
+hexLbl.Text=HexColors[key]
+hexLbl.TextColor3=C("TextLight")
+hexLbl.TextSize=11
+hexLbl.Font=Enum.Font.Gotham
+hexLbl.TextXAlignment=Enum.TextXAlignment.Center
+hexLbl.Parent=row
+local swatch=Instance.new("TextButton")
+swatch.Size=UDim2.new(0,44,0,32)
+swatch.Position=UDim2.new(1,-58,0.5,-16)
+swatch.BackgroundColor3=Color3.fromHex(HexColors[key])
+swatch.Text=""
+swatch.AutoButtonColor=false
+swatch.Parent=row
+local sc=Instance.new("UICorner")
+sc.CornerRadius=UDim.new(0,8)
+sc.Parent=swatch
+local ss=Instance.new("UIStroke")
+ss.Color=Color3.fromRGB(255,255,255)
+ss.Thickness=1.5
+ss.Transparency=0.3
+ss.Parent=swatch
+swatch.MouseButton1Click:Connect(function()
+local picker=Instance.new("Frame")
+picker.Size=UDim2.new(0,280,0,300)
+picker.Position=UDim2.new(0.5,-140,0.5,-150)
+picker.BackgroundColor3=C("WindowBg")
+picker.BorderSizePixel=0
+picker.ZIndex=100
+picker.Parent=gui
+local pc=Instance.new("UICorner")
+pc.CornerRadius=UDim.new(0,14)
+pc.Parent=picker
+local ps=Instance.new("UIStroke")
+ps.Color=C("Accent")
+ps.Thickness=2
+ps.Parent=picker
+local pt=Instance.new("TextLabel")
+pt.Size=UDim2.new(1,0,0,36)
+pt.BackgroundTransparency=1
+pt.Text=label
+pt.TextColor3=C("Text")
+pt.TextSize=16
+pt.Font=Enum.Font.GothamBold
+pt.Parent=picker
+local pclose=Instance.new("TextButton")
+pclose.Size=UDim2.new(0,30,0,30)
+pclose.Position=UDim2.new(1,-36,0,4)
+pclose.BackgroundColor3=C("Accent")
+pclose.Text="×"
+pclose.TextColor3=Color3.fromRGB(255,255,255)
+pclose.TextSize=18
+pclose.Font=Enum.Font.GothamBold
+pclose.AutoButtonColor=false
+pclose.Parent=picker
+local pcc=Instance.new("UICorner")
+pcc.CornerRadius=UDim.new(0.5,0)
+pcc.Parent=pclose
+pclose.MouseButton1Click:Connect(function()
+picker:Destroy()
+end)
+local presetColors={
+"#FF9EB5","#FF6B9D","#FF4D8D",
+"#FDF0F5","#FFF8FA","#FFE1EB",
+"#783C5A","#B4829B","#FFC8D7",
+"#00FF87","#60EFFF","#A855F7",
+"#EC4899","#F97316","#3B82F6",
+"#FBBF24","#06B6D4","#39FF14",
+"#1A1A1A","#FFFFFF","#000000",
+}
+local grid=Instance.new("Frame")
+grid.Size=UDim2.new(1,-20,1,-60)
+grid.Position=UDim2.new(0,10,0,50)
+grid.BackgroundTransparency=1
+grid.Parent=picker
+local gl=Instance.new("UIGridLayout")
+gl.CellSize=UDim2.new(0,40,0,40)
+gl.CellPadding=UDim2.new(0,6,0,6)
+gl.SortOrder=Enum.SortOrder.LayoutOrder
+gl.Parent=grid
+for _,hex in ipairs(presetColors) do
+local cb=Instance.new("TextButton")
+cb.BackgroundColor3=Color3.fromHex(hex)
+cb.Text=""
+cb.AutoButtonColor=false
+cb.Parent=grid
+local cbc=Instance.new("UICorner")
+cbc.CornerRadius=UDim.new(0,8)
+cbc.Parent=cb
+local cbs=Instance.new("UIStroke")
+cbs.Color=Color3.fromRGB(255,255,255)
+cbs.Thickness=1
+cbs.Transparency=0.5
+cbs.Parent=cb
+cb.MouseButton1Click:Connect(function()
+HexColors[key]=hex
 saveColors()
+swatch.BackgroundColor3=Color3.fromHex(hex)
+hexLbl.Text=hex
+picker:Destroy()
+end)
 end
 end)
+end
+for _,item in ipairs(colorKeys) do
+makeColorRow(item.key,item.name)
 end
 addButton(settingsPage,"↩️ 恢复默认颜色",function()
 for k,v in pairs(DEFAULT_COLORS) do
@@ -1156,3 +1377,4 @@ if State.presetName then loadPreset(State.presetName) end
 end)
 -- ==================== 打开模糊 ====================
 TweenService:Create(uiBlur,TweenInfo.new(0.4),{Size=12}):Play()
+
