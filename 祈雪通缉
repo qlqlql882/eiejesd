@@ -2,6 +2,7 @@
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local LT = game:GetService("Lighting")
 
 local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -20,6 +21,26 @@ local COLORS = {
     Stroke = Color3.fromRGB(255, 200, 215),
 }
 
+-- ==================== 功能状态 ====================
+local State = {
+    aimbotOn = false,
+    aimbotPart = "头部",
+    aimbotTeam = "所有人",
+    aimbotFov = 150,
+    aimbotSmooth = 0.25,
+    espOn = false,
+    espTeam = "所有人",
+    flyOn = false,
+    flySpeed = 80,
+    bypassOn = false,
+}
+
+-- ==================== 工具函数 ====================
+local function isTeammate(p)
+    if not LP.Team then return false end
+    return p.Team == LP.Team
+end
+
 -- ==================== UI 外壳 ====================
 local gui = Instance.new("ScreenGui")
 gui.Name = "PrayforsnowUI"
@@ -28,7 +49,6 @@ gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = pg
 
--- 磨砂
 local uiBlur = Instance.new("BlurEffect")
 uiBlur.Name = "PrayUIBlur"
 uiBlur.Size = 0
@@ -36,7 +56,6 @@ uiBlur.Parent = LT
 
 -- 主窗口
 local win = Instance.new("Frame")
-win.Name = "Window"
 win.Size = UDim2.new(0, 680, 0, 470)
 win.Position = UDim2.new(0.5, -340, 0.5, -235)
 win.BackgroundColor3 = COLORS.WindowBg
@@ -54,7 +73,7 @@ winStroke.Thickness = 1.5
 winStroke.Transparency = 0.4
 winStroke.Parent = win
 
--- 顶部标题栏
+-- 标题栏
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 50)
 titleBar.BackgroundTransparency = 1
@@ -90,9 +109,8 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0.5, 0)
 closeCorner.Parent = closeBtn
 
--- ==================== 侧边栏 ====================
+-- 侧边栏
 local sidebar = Instance.new("Frame")
-sidebar.Name = "Sidebar"
 sidebar.Size = UDim2.new(0, 150, 1, -130)
 sidebar.Position = UDim2.new(0, 12, 0, 58)
 sidebar.BackgroundColor3 = COLORS.SidebarBg
@@ -104,9 +122,8 @@ local sideCorner = Instance.new("UICorner")
 sideCorner.CornerRadius = UDim.new(0, 14)
 sideCorner.Parent = sidebar
 
--- ==================== 内容区 ====================
+-- 内容区
 local content = Instance.new("Frame")
-content.Name = "Content"
 content.Size = UDim2.new(1, -190, 1, -130)
 content.Position = UDim2.new(0, 172, 0, 58)
 content.BackgroundColor3 = COLORS.ContentBg
@@ -118,7 +135,7 @@ local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 14)
 contentCorner.Parent = content
 
--- ==================== 底部玩家信息 ====================
+-- 底部玩家信息
 local playerBar = Instance.new("Frame")
 playerBar.Size = UDim2.new(1, -24, 0, 60)
 playerBar.Position = UDim2.new(0, 12, 1, -72)
@@ -131,7 +148,6 @@ local pbCorner = Instance.new("UICorner")
 pbCorner.CornerRadius = UDim.new(0, 14)
 pbCorner.Parent = playerBar
 
--- 头像
 local avatarFrame = Instance.new("Frame")
 avatarFrame.Size = UDim2.new(0, 44, 0, 44)
 avatarFrame.Position = UDim2.new(0, 12, 0.5, -22)
@@ -154,7 +170,6 @@ local avatarImgCorner = Instance.new("UICorner")
 avatarImgCorner.CornerRadius = UDim.new(0.5, 0)
 avatarImgCorner.Parent = avatarImg
 
--- 名字
 local nameLabel = Instance.new("TextLabel")
 nameLabel.Size = UDim2.new(1, -80, 0, 24)
 nameLabel.Position = UDim2.new(0, 68, 0, 10)
@@ -221,7 +236,6 @@ local function createTab(name, icon)
     TabButtons[name] = btn
 
     local page = Instance.new("ScrollingFrame")
-    page.Name = name
     page.Size = UDim2.new(1, -20, 1, -20)
     page.Position = UDim2.new(0, 10, 0, 10)
     page.BackgroundTransparency = 1
@@ -365,6 +379,70 @@ local function addButton(page, text, callback)
     return btn
 end
 
+local function addInput(page, placeholder, default, callback)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -16, 0, 40)
+    box.BackgroundColor3 = COLORS.CardBg
+    box.BackgroundTransparency = 0.3
+    box.BorderSizePixel = 0
+    box.Text = default or ""
+    box.PlaceholderText = placeholder
+    box.TextColor3 = COLORS.Text
+    box.PlaceholderColor3 = COLORS.TextLight
+    box.TextSize = 14
+    box.Font = Enum.Font.Gotham
+    box.ClearTextOnFocus = false
+    box.Parent = page
+
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 10)
+    c.Parent = box
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 12)
+    pad.Parent = box
+
+    box.FocusLost:Connect(function()
+        if callback then callback(box.Text) end
+    end)
+
+    return box
+end
+
+local function addDropdown(page, title, options, default, callback)
+    local idx = 1
+    for i, v in ipairs(options) do
+        if v == default then idx = i end
+    end
+    local currentValue = options[idx]
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -16, 0, 40)
+    btn.BackgroundColor3 = COLORS.CardBg
+    btn.BackgroundTransparency = 0.3
+    btn.Text = "   " .. title .. " : " .. currentValue
+    btn.TextColor3 = COLORS.Text
+    btn.TextSize = 14
+    btn.Font = Enum.Font.Gotham
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.AutoButtonColor = false
+    btn.Parent = page
+
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 10)
+    c.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        idx = idx + 1
+        if idx > #options then idx = 1 end
+        currentValue = options[idx]
+        btn.Text = "   " .. title .. " : " .. currentValue
+        if callback then callback(currentValue) end
+    end)
+
+    return btn
+end
+
 -- ==================== 创建标签页 ====================
 local homePage = createTab("主页", "🏠")
 local funcPage = createTab("功能", "🛡️")
@@ -373,24 +451,267 @@ local espPage = createTab("透视", "👁️")
 local movePage = createTab("移动", "✈️")
 local settingsPage = createTab("设置", "⚙️")
 
--- ==================== 默认显示主页 ====================
 showTab("主页")
 
--- ==================== 测试内容 ====================
+-- ==================== 功能实现 ====================
+
+-- 判断目标是否有效
+local function isValidTarget(p, teamMode)
+    if p == LP then return false end
+    if not p.Character then return false end
+    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    if teamMode == "队伍" and not isTeammate(p) then return false end
+    if teamMode == "敌人" and isTeammate(p) then return false end
+    return true
+end
+
+-- 自瞄
+local aimbotLoop
+local function getAimbotTarget()
+    local cam = workspace.CurrentCamera
+    local center = cam.ViewportSize / 2
+    local best, bestDist = nil, math.huge
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if isValidTarget(p, State.aimbotTeam) then
+            local part
+            if State.aimbotPart == "头部" then
+                part = p.Character:FindFirstChild("Head")
+            else
+                part = p.Character:FindFirstChild("UpperTorso") or p.Character:FindFirstChild("Torso")
+            end
+            if not part then part = p.Character:FindFirstChild("HumanoidRootPart") end
+
+            if part then
+                local screenPos, onScreen = cam:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dx = screenPos.X - center.X
+                    local dy = screenPos.Y - center.Y
+                    local dist = math.sqrt(dx*dx + dy*dy)
+                    if dist <= State.aimbotFov and dist < bestDist then
+                        best = part
+                        bestDist = dist
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local fovCircleGui
+local function updateFovCircle()
+    if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui = nil end
+    if not State.aimbotOn then return end
+
+    local g = Instance.new("ScreenGui")
+    g.Name = "PrayFov"
+    g.ResetOnSpawn = false
+    g.IgnoreGuiInset = true
+    g.Parent = pg
+
+    local circle = Instance.new("Frame")
+    circle.AnchorPoint = Vector2.new(0.5, 0.5)
+    circle.Position = UDim2.new(0.5, 0, 0.5, 0)
+    circle.Size = UDim2.new(0, State.aimbotFov * 2, 0, State.aimbotFov * 2)
+    circle.BackgroundTransparency = 1
+    circle.Parent = g
+
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(0.5, 0)
+    cc.Parent = circle
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = COLORS.Accent
+    stroke.Thickness = 2
+    stroke.Transparency = 0.4
+    stroke.Parent = circle
+
+    fovCircleGui = g
+end
+
+local function startAimbot()
+    if aimbotLoop then aimbotLoop:Disconnect() end
+    aimbotLoop = RunService.RenderStepped:Connect(function()
+        if not State.aimbotOn then return end
+        local target = getAimbotTarget()
+        if target then
+            local cam = workspace.CurrentCamera
+            local lookAt = CFrame.new(cam.CFrame.Position, target.Position)
+            cam.CFrame = cam.CFrame:Lerp(lookAt, State.aimbotSmooth)
+        end
+    end)
+end
+
+-- 透视
+local espHighlights = {}
+local function clearEsp()
+    for _, h in ipairs(espHighlights) do
+        pcall(function() h:Destroy() end)
+    end
+    espHighlights = {}
+end
+
+local function applyEsp()
+    clearEsp()
+    if not State.espOn then return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local show = true
+            if State.espTeam == "队伍" and not isTeammate(p) then show = false end
+            if State.espTeam == "敌人" and isTeammate(p) then show = false end
+            if show then
+                local color = isTeammate(p) and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(255, 0, 0)
+                pcall(function()
+                    local h = Instance.new("Highlight")
+                    h.FillColor = color
+                    h.OutlineColor = color
+                    h.FillTransparency = 0.5
+                    h.Parent = p.Character
+                    table.insert(espHighlights, h)
+                end)
+            end
+        end
+    end
+end
+
+-- 飞行
+local flyBV, flyLoop
+local function startFly()
+    local char = LP.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    flyBV.Velocity = Vector3.new(0, 0, 0)
+    flyBV.Parent = hrp
+
+    flyLoop = RunService.RenderStepped:Connect(function()
+        if not State.flyOn or not flyBV then return end
+        local c = LP.Character
+        if not c then return end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        flyBV.Velocity = hum.MoveDirection * State.flySpeed
+    end)
+end
+
+local function stopFly()
+    if flyBV then flyBV:Destroy(); flyBV = nil end
+    if flyLoop then flyLoop:Disconnect(); flyLoop = nil end
+end
+
+-- 绕过反作弊
+local function enableBypass()
+    if not hookmetamethod or not newcclosure then return end
+    pcall(function()
+        local mt = getrawmetatable(game)
+        local oldNamecall = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if State.bypassOn then
+                if method == "Kick" and self == LP then return end
+                if method == "FireServer" and tostring(self) == "PlayerEvent" then
+                    local a = {...}
+                    if a[1] == "combatMode" or a[1] == "takeDamage" then return end
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+end
+
+-- ==================== 主页 ====================
 addSection(homePage, "脚本信息")
 addLabel(homePage, "欢迎使用 Prayforsnow X")
 addLabel(homePage, "作者：祈雪")
 addLabel(homePage, "版本：v1.0")
 
-addSection(funcPage, "测试控件")
-addToggle(funcPage, "示例开关", false, function(s)
-    print("开关:", s)
-end)
-addButton(funcPage, "示例按钮", function()
-    print("按钮点击")
+-- ==================== 功能页 ====================
+addSection(funcPage, "基础功能")
+addToggle(funcPage, "🛡️ 绕过反作弊", false, function(s)
+    State.bypassOn = s
+    if s then enableBypass() end
 end)
 
--- ==================== 关闭 / 悬浮球 ====================
+-- ==================== 自瞄页 ====================
+addSection(aimPage, "自瞄设置")
+addToggle(aimPage, "🎯 自瞄", false, function(s)
+    State.aimbotOn = s
+    if s then
+        startAimbot()
+        updateFovCircle()
+    else
+        if aimbotLoop then aimbotLoop:Disconnect(); aimbotLoop = nil end
+        if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui = nil end
+    end
+end)
+addDropdown(aimPage, "锁定部位", {"头部", "身体"}, "头部", function(v)
+    State.aimbotPart = v
+end)
+addDropdown(aimPage, "阵营", {"所有人", "队伍", "敌人"}, "所有人", function(v)
+    State.aimbotTeam = v
+end)
+addInput(aimPage, "圈半径（像素）", "150", function(v)
+    State.aimbotFov = tonumber(v) or 150
+    updateFovCircle()
+end)
+addInput(aimPage, "平滑度（0.05-0.5）", "0.25", function(v)
+    State.aimbotSmooth = tonumber(v) or 0.25
+end)
+
+-- ==================== 透视页 ====================
+addSection(espPage, "透视设置")
+addToggle(espPage, "👁️ 透视", false, function(s)
+    State.espOn = s
+    applyEsp()
+end)
+addDropdown(espPage, "阵营", {"所有人", "队伍", "敌人"}, "所有人", function(v)
+    State.espTeam = v
+    applyEsp()
+end)
+
+-- 自动刷新透视（玩家进出）
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if State.espOn then applyEsp() end
+    end
+end)
+
+-- ==================== 移动页 ====================
+addSection(movePage, "飞行")
+addToggle(movePage, "🕊️ 飞行模式", false, function(s)
+    State.flyOn = s
+    if s then startFly() else stopFly() end
+end)
+addInput(movePage, "飞行速度", "80", function(v)
+    State.flySpeed = tonumber(v) or 80
+end)
+
+addSection(movePage, "传送坐标")
+addInput(movePage, "X", "0", function(v) State.tpX = tonumber(v) or 0 end)
+addInput(movePage, "Y", "0", function(v) State.tpY = tonumber(v) or 0 end)
+addInput(movePage, "Z", "0", function(v) State.tpZ = tonumber(v) or 0 end)
+addButton(movePage, "📍 传送到坐标", function()
+    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = CFrame.new(State.tpX or 0, State.tpY or 0, State.tpZ or 0)
+    end
+end)
+
+-- ==================== 设置页 ====================
+addSection(settingsPage, "关于")
+addLabel(settingsPage, "Prayforsnow X v1.0")
+addLabel(settingsPage, "作者：祈雪")
+addLabel(settingsPage, "UI：粉色主题")
+
+-- ==================== 悬浮球 ====================
 local miniBtn = Instance.new("TextButton")
 miniBtn.Size = UDim2.new(0, 60, 0, 60)
 miniBtn.Position = UDim2.new(0, 20, 0.5, -30)
@@ -440,5 +761,4 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- 打开时模糊
 TweenService:Create(uiBlur, TweenInfo.new(0.4), {Size = 12}):Play()
