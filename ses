@@ -11,14 +11,77 @@ local Window = Library:CreateWindow({
 
 local Tab = Window:AddTab("扫描", "search")
 
--- ==================== 扫描结果（Dropdown） ====================
+-- ==================== 物件名汉化对照表 ====================
+local TranslateMap = {
+    ["gold"] = "金币",
+    ["coin"] = "金币",
+    ["cash"] = "现金",
+    ["money"] = "钱",
+    ["dollar"] = "美元",
+    ["bill"] = "钞票",
+    ["gem"] = "宝石",
+    ["bar"] = "金条",
+    ["wood"] = "木头",
+    ["iron"] = "铁",
+    ["steel"] = "钢",
+    ["flame"] = "火焰",
+    ["water"] = "水",
+    ["skull"] = "骷髅",
+    ["crate"] = "箱子",
+    ["chest"] = "宝箱",
+    ["display"] = "展示架",
+    ["floor"] = "地板",
+    ["gauge"] = "仪表",
+    ["mesh"] = "网格",
+    ["porch"] = "门廊",
+    ["rear"] = "后部",
+    ["sight"] = "瞄准具",
+    ["window"] = "窗户",
+    ["terrain"] = "地形",
+    ["locker"] = "储物柜",
+    ["body"] = "身体",
+    ["left"] = "左",
+    ["right"] = "右",
+    ["upper"] = "上",
+    ["lower"] = "下",
+    ["front"] = "前",
+    ["back"] = "后",
+    ["gun"] = "枪",
+    ["ammo"] = "弹药",
+    ["cannon"] = "大炮",
+    ["train"] = "火车",
+    ["fuel"] = "燃料",
+    ["coal"] = "煤",
+    ["track"] = "轨道",
+    ["bank"] = "银行",
+    ["rack"] = "架子",
+    ["door"] = "门",
+    ["wall"] = "墙",
+    ["roof"] = "屋顶",
+}
+
+-- 翻译函数
+local function translate(name)
+    local result = name
+    local lower = name:lower()
+    for eng, chn in pairs(TranslateMap) do
+        local s, e = lower:find(eng, 1, true)
+        if s then
+            result = result:sub(1, s-1) .. chn .. result:sub(e+1)
+            lower = result:lower()
+        end
+    end
+    return result
+end
+
+-- ==================== 扫描结果（Dropdown 滚动） ====================
 local ScanGroup = Tab:AddLeftGroupbox("扫描结果")
 
-local ScanResult = {}
+local ScanResult = {}       -- 显示用
+local ScanObjects = {}      -- 物件映射：显示名 → 物件
 
--- 结果显示为 Dropdown（点开滚动查看）
-local ResultDropdown = ScanGroup:AddDropdown("scan_result", {
-    Text = "扫描结果（点开查看）",
+local ResultDropdown = ScanGroup:AddDropdown("scan_drop", {
+    Text = "扫描结果（点开滚动查看）",
     Values = {"还没有扫描"},
     Default = "还没有扫描",
     Multi = false,
@@ -27,7 +90,6 @@ local ResultDropdown = ScanGroup:AddDropdown("scan_result", {
 
 local CountLabel = ScanGroup:AddLabel("共 0 项")
 
--- 刷新下拉
 local function RefreshDropdown()
     if #ScanResult == 0 then
         ResultDropdown:SetValues({"还没有扫描"})
@@ -45,6 +107,7 @@ ActionGroup:AddButton({
     Text = "🔍 扫描全部物件",
     Func = function()
         ScanResult = {}
+        ScanObjects = {}
         local found = {}
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and obj.Name ~= "" then
@@ -56,13 +119,19 @@ ActionGroup:AddButton({
                     end
                 end
                 if not isChar then
-                    found[obj.Name] = (found[obj.Name] or 0) + 1
+                    local key = obj.Name
+                    if not found[key] then
+                        found[key] = {count = 0, obj = obj}
+                    end
+                    found[key].count = found[key].count + 1
                 end
             end
         end
 
-        for name, num in pairs(found) do
-            table.insert(ScanResult, name .. " ×" .. num)
+        for name, data in pairs(found) do
+            local display = translate(name) .. " (" .. name .. ") ×" .. data.count
+            table.insert(ScanResult, display)
+            ScanObjects[display] = name
         end
         table.sort(ScanResult)
 
@@ -75,6 +144,7 @@ ActionGroup:AddButton({
     Text = "💰 只看钱相关",
     Func = function()
         ScanResult = {}
+        ScanObjects = {}
         local keywords = {"coin", "cash", "money", "dollar", "gold", "bill", "gem", "credit", "bar", "note", "crate"}
         local found = {}
         for _, obj in ipairs(workspace:GetDescendants()) do
@@ -90,7 +160,11 @@ ActionGroup:AddButton({
                     local lower = obj.Name:lower()
                     for _, kw in ipairs(keywords) do
                         if lower:find(kw) then
-                            found[obj.Name] = (found[obj.Name] or 0) + 1
+                            local key = obj.Name
+                            if not found[key] then
+                                found[key] = {count = 0, obj = obj}
+                            end
+                            found[key].count = found[key].count + 1
                             break
                         end
                     end
@@ -98,8 +172,10 @@ ActionGroup:AddButton({
             end
         end
 
-        for name, num in pairs(found) do
-            table.insert(ScanResult, name .. " ×" .. num)
+        for name, data in pairs(found) do
+            local display = translate(name) .. " (" .. name .. ") ×" .. data.count
+            table.insert(ScanResult, display)
+            ScanObjects[display] = name
         end
         table.sort(ScanResult)
 
@@ -108,7 +184,7 @@ ActionGroup:AddButton({
         if #ScanResult == 0 then
             Library:Notify("Prayforsnow X", "没找到钱相关物件", 3)
         else
-            Library:Notify("Prayforsnow X", "找到 " .. #ScanResult .. " 项钱相关", 3)
+            Library:Notify("Prayforsnow X", "找到 " .. #ScanResult .. " 项", 3)
         end
     end,
 })
@@ -117,8 +193,129 @@ ActionGroup:AddButton({
     Text = "🗑️ 清空结果",
     Func = function()
         ScanResult = {}
+        ScanObjects = {}
         RefreshDropdown()
     end,
 })
 
-Library:Notify("Prayforsnow X", "扫描工具加载完成", 3)
+-- ==================== 吸取功能 ====================
+local CollectGroup = Tab:AddRightGroupbox("吸取")
+
+local SelectedName = nil       -- 当前选中的物件原名
+local Running = false
+local Count = 0
+
+-- 下拉：选择要吸的物件
+local CollectDropdown = CollectGroup:AddDropdown("collect_target", {
+    Text = "选择要吸的物件",
+    Values = {"请先扫描"},
+    Default = "请先扫描",
+    Multi = false,
+    Searchable = true,
+    Callback = function(value)
+        if value and value ~= "请先扫描" then
+            SelectedName = ScanObjects[value] or value
+        end
+    end,
+})
+
+-- 更新吸取下拉的列表
+local function RefreshCollectDropdown()
+    if #ScanResult == 0 then
+        CollectDropdown:SetValues({"请先扫描"})
+    else
+        CollectDropdown:SetValues(ScanResult)
+    end
+end
+
+-- 状态显示
+local StatusLabel = CollectGroup:AddLabel("状态：未开启")
+
+-- 吸取间隔
+CollectGroup:AddSlider("interval", {
+    Text = "间隔(秒)",
+    Default = 0.1,
+    Min = 0.05,
+    Max = 2,
+    Rounding = 2,
+})
+
+-- 手动吸一次
+CollectGroup:AddButton({
+    Text = "🎯 吸一个到脚下",
+    Func = function()
+        if not SelectedName then
+            Library:Notify("Prayforsnow X", "请先选择物件", 3)
+            return
+        end
+
+        local char = game.Players.LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        local count = 0
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name == SelectedName then
+                pcall(function()
+                    obj.CFrame = hrp.CFrame
+                end)
+                count = count + 1
+                if count >= 15 then break end -- 上限 15 个
+            end
+        end
+
+        Library:Notify("Prayforsnow X", "吸了 " .. count .. " 个", 3)
+    end,
+})
+
+-- 自动循环吸
+CollectGroup:AddToggle("auto_collect", {
+    Text = "🔁 自动吸取",
+    Default = false,
+    Callback = function(state)
+        Running = state
+        if state then
+            if not SelectedName then
+                Library:Notify("Prayforsnow X", "请先选择物件", 3)
+                return
+            end
+
+            task.spawn(function()
+                while Running do
+                    local char = game.Players.LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local myPos = hrp.Position
+                        local count = 0
+                        for _, obj in ipairs(workspace:GetDescendants()) do
+                            if obj:IsA("BasePart") and obj.Name == SelectedName then
+                                local dist = (obj.Position - myPos).Magnitude
+                                if dist <= 10000 then
+                                    pcall(function()
+                                        obj.CFrame = hrp.CFrame
+                                    end)
+                                    count = count + 1
+                                    Count = Count + 1
+                                    if count >= 15 then break end
+                                end
+                            end
+                        end
+                    end
+                    StatusLabel:SetText("状态：运行中 | 共 " .. Count .. " 个")
+                    local delay = Library.Options.interval.Value or 0.1
+                    task.wait(delay)
+                end
+                StatusLabel:SetText("状态：已停止 | 共 " .. Count .. " 个")
+            end)
+        end
+    end,
+})
+
+-- 扫描后同步刷新吸取下拉
+local originalRefresh = RefreshDropdown
+RefreshDropdown = function()
+    originalRefresh()
+    RefreshCollectDropdown()
+end
+
+Library:Notify("Prayforsnow X", "扫描 + 吸取工具加载完成", 3)
