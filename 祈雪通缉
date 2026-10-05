@@ -30,7 +30,7 @@ end)
 end
 loadColors()
 -- ==================== 状态 ====================
-local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",flyOn=false,flySpeed=80,bypassOn=false,collectTarget=nil,collectAuto=false}
+local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",espEnhancedOn=false,flyOn=false,flySpeed=80,bypassOn=false,collectTarget=nil,collectAuto=false,presetName="default"}
 local flyUp,flyDown=false,false
 local function isTeammate(p)
 if not LP.Team then return false end
@@ -399,6 +399,7 @@ local aimPage=createTab("自瞄","🎯")
 local espPage=createTab("透视","👁️")
 local movePage=createTab("移动","✈️")
 local collectPage=createTab("吸取","📦")
+local visualPage=createTab("界面","🖼️")
 local settingsPage=createTab("设置","⚙️")
 showTab("主页")
 -- ==================== 功能实现 ====================
@@ -622,6 +623,10 @@ addDropdown(espPage,"阵营",{"所有人","队伍","敌人"},"所有人",functio
 State.espTeam=v
 applyEsp()
 end)
+addToggle(espPage,"📊 ESP增强（血量/距离/名字）",false,function(s)
+State.espEnhancedOn=s
+if not s and clearEspEnhanced then clearEspEnhanced() end
+end)
 task.spawn(function()
 while true do
 task.wait(2)
@@ -772,150 +777,234 @@ collectStatus.Text="状态：已停止 | 共 "..total.." 个"
 end)
 end
 end)
--- ==================== 设置页 ====================
-addSection(settingsPage,"脚本信息")
-addLabel(settingsPage,"Prayforsnow X v1.0")
-addLabel(settingsPage,"作者：祈雪")
-addSection(settingsPage,"颜色自定义")
-local colorKeys={
-{name="窗口背景",key="WindowBg"},
-{name="侧边栏",key="SidebarBg"},
-{name="内容区",key="ContentBg"},
-{name="控件背景",key="CardBg"},
-{name="主色",key="Accent"},
-{name="文字色",key="Text"},
-{name="边框色",key="Stroke"},
-}
-for _,item in ipairs(colorKeys) do
-addInput(settingsPage,item.name.."（十六进制）",HexColors[item.key],function(v)
-if v and v:sub(1,1)=="#" then
-HexColors[item.key]=v
-saveColors()
+-- ==================== 界面页 ====================
+addSection(visualPage,"屏幕显示")
+local crossGui=Instance.new("ScreenGui")
+crossGui.Name="PrayCross"
+crossGui.ResetOnSpawn=false
+crossGui.IgnoreGuiInset=true
+crossGui.Enabled=false
+crossGui.Parent=pg
+local crossH=Instance.new("Frame")
+crossH.Size=UDim2.new(0,20,0,2)
+crossH.Position=UDim2.new(0.5,-10,0.5,-1)
+crossH.BackgroundColor3=C("Accent")
+crossH.BorderSizePixel=0
+crossH.Parent=crossGui
+local crossV=Instance.new("Frame")
+crossV.Size=UDim2.new(0,2,0,20)
+crossV.Position=UDim2.new(0.5,-1,0.5,-10)
+crossV.BackgroundColor3=C("Accent")
+crossV.BorderSizePixel=0
+crossV.Parent=crossGui
+addToggle(visualPage,"🎯 准心",false,function(s)
+crossGui.Enabled=s
+end)
+local fpsGui=Instance.new("ScreenGui")
+fpsGui.Name="PrayFPS"
+fpsGui.ResetOnSpawn=false
+fpsGui.IgnoreGuiInset=true
+fpsGui.Enabled=false
+fpsGui.Parent=pg
+local fpsLbl=Instance.new("TextLabel")
+fpsLbl.Size=UDim2.new(0,120,0,30)
+fpsLbl.Position=UDim2.new(0,10,0,10)
+fpsLbl.BackgroundColor3=Color3.fromRGB(0,0,0)
+fpsLbl.BackgroundTransparency=0.5
+fpsLbl.TextColor3=Color3.fromRGB(0,255,100)
+fpsLbl.TextSize=16
+fpsLbl.Font=Enum.Font.GothamBold
+fpsLbl.Text="FPS: 0"
+fpsLbl.Parent=fpsGui
+local fpsFrameCount=0
+local fpsLastTime=tick()
+task.spawn(function()
+while true do
+task.wait(1)
+if fpsGui.Enabled then
+fpsLbl.Text="FPS: "..fpsFrameCount
+fpsFrameCount=0
+end
 end
 end)
-end
-addButton(settingsPage,"↩️ 恢复默认颜色",function()
-for k,v in pairs(DEFAULT_COLORS) do
-HexColors[k]=v
-end
-saveColors()
+RunService.RenderStepped:Connect(function()
+fpsFrameCount=fpsFrameCount+1
 end)
--- ==================== 悬浮菜单 ====================
-local miniMenu=Instance.new("Frame")
-miniMenu.Name="MiniMenu"
-miniMenu.Size=UDim2.new(0,200,0,50)
-miniMenu.Position=UDim2.new(0,20,0.5,-25)
-miniMenu.BackgroundColor3=C("MiniBg")
-miniMenu.BackgroundTransparency=0.1
-miniMenu.BorderSizePixel=0
-miniMenu.Visible=false
-miniMenu.Parent=gui
-local miniCorner=Instance.new("UICorner")
-miniCorner.CornerRadius=UDim.new(1,0)
-miniCorner.Parent=miniMenu
-local miniStroke=Instance.new("UIStroke")
-miniStroke.Thickness=2
-miniStroke.Color=C("MiniBorder")
-miniStroke.Parent=miniMenu
-local dragArea=Instance.new("TextButton")
-dragArea.Size=UDim2.new(0,50,1,0)
-dragArea.Position=UDim2.new(0,0,0,0)
-dragArea.BackgroundTransparency=1
-dragArea.Text="✥"
-dragArea.TextColor3=Color3.fromHex("#8899AA")
-dragArea.TextSize=20
-dragArea.Font=Enum.Font.GothamBold
-dragArea.Parent=miniMenu
-local sep=Instance.new("Frame")
-sep.Size=UDim2.new(0,1,0.6,0)
-sep.Position=UDim2.new(0,50,0.2,0)
-sep.BackgroundColor3=Color3.fromHex("#2A3540")
-sep.BorderSizePixel=0
-sep.Parent=miniMenu
-local logoArea=Instance.new("TextButton")
-logoArea.Size=UDim2.new(0,60,1,0)
-logoArea.Position=UDim2.new(0,51,0,0)
-logoArea.BackgroundTransparency=1
-logoArea.Text="PS"
-logoArea.TextColor3=C("MiniText")
-logoArea.TextSize=18
-logoArea.Font=Enum.Font.GothamBold
-logoArea.Parent=miniMenu
-local nameArea=Instance.new("TextButton")
-nameArea.Size=UDim2.new(1,-111,1,0)
-nameArea.Position=UDim2.new(0,111,0,0)
-nameArea.BackgroundTransparency=1
-nameArea.Text="Prayforsnow X"
-nameArea.TextColor3=C("MiniText")
-nameArea.TextSize=14
-nameArea.Font=Enum.Font.Gotham
-nameArea.TextXAlignment=Enum.TextXAlignment.Left
-nameArea.Parent=miniMenu
-local function openWindow()
-miniMenu.Visible=false
-win.Visible=true
-TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=12}):Play()
-end
-logoArea.MouseButton1Click:Connect(openWindow)
-nameArea.MouseButton1Click:Connect(openWindow)
-local dragging2,dragStart2,startPos2
-dragArea.InputBegan:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragging2=true
-dragStart2=input.Position
-startPos2=miniMenu.Position
-end
+addToggle(visualPage,"📊 显示FPS",false,function(s)
+fpsGui.Enabled=s
 end)
-dragArea.InputEnded:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragging2=false
+local watermarkGui=Instance.new("ScreenGui")
+watermarkGui.Name="PrayWatermark"
+watermarkGui.ResetOnSpawn=false
+watermarkGui.IgnoreGuiInset=true
+watermarkGui.Parent=pg
+local watermark=Instance.new("TextLabel")
+watermark.Size=UDim2.new(0,200,0,30)
+watermark.Position=UDim2.new(1,-210,0,10)
+watermark.BackgroundColor3=Color3.fromRGB(0,0,0)
+watermark.BackgroundTransparency=0.6
+watermark.TextColor3=C("Accent")
+watermark.TextSize=14
+watermark.Font=Enum.Font.GothamBold
+watermark.Text="Prayforsnow X | v1.0"
+watermark.Parent=watermarkGui
+addToggle(visualPage,"💧 水印",true,function(s)
+watermarkGui.Enabled=s
+end)
+-- ==================== ESP 增强 ====================
+local espGui=Instance.new("ScreenGui")
+espGui.Name="PrayESP"
+espGui.ResetOnSpawn=false
+espGui.IgnoreGuiInset=true
+espGui.Parent=pg
+local espElements={}
+local function clearEspEnhanced()
+for k,e in pairs(espElements) do
+pcall(function() e.bb:Destroy() end)
 end
-end)
-UIS.InputChanged:Connect(function(input)
-if dragging2 and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-local delta=input.Position-dragStart2
-miniMenu.Position=UDim2.new(startPos2.X.Scale,startPos2.X.Offset+delta.X,startPos2.Y.Scale,startPos2.Y.Offset+delta.Y)
+espElements={}
 end
-end)
-minBtn.MouseButton1Click:Connect(function()
-win.Visible=false
-miniMenu.Visible=true
-TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
-end)
-local isFullscreen=false
-local originalSize=win.Size
-local originalPos=win.Position
-fullBtn.MouseButton1Click:Connect(function()
-isFullscreen=not isFullscreen
-if isFullscreen then
-TweenService:Create(win,TweenInfo.new(0.3),{Size=UDim2.new(1,0,1,0),Position=UDim2.new(0,0,0,0)}):Play()
-fullBtn.Text="❐"
+local function updateEspEnhanced()
+if not State.espEnhancedOn then return end
+for _,p in ipairs(Players:GetPlayers()) do
+if p~=LP and p.Character then
+local hrp=p.Character:FindFirstChild("HumanoidRootPart")
+local head=p.Character:FindFirstChild("Head")
+local hum=p.Character:FindFirstChildOfClass("Humanoid")
+if hrp and head and hum then
+local show=true
+if State.espTeam=="队伍" and not isTeammate(p) then show=false end
+if State.espTeam=="敌人" and isTeammate(p) then show=false end
+if show then
+local key=tostring(p.UserId)
+if not espElements[key] then
+local bb=Instance.new("BillboardGui")
+bb.Size=UDim2.new(0,200,0,60)
+bb.StudsOffset=Vector3.new(0,3,0)
+bb.AlwaysOnTop=true
+bb.Parent=head
+local nameLbl=Instance.new("TextLabel")
+nameLbl.Size=UDim2.new(1,0,0.4,0)
+nameLbl.BackgroundTransparency=1
+nameLbl.Text=p.Name
+nameLbl.TextColor3=isTeammate(p) and Color3.fromRGB(0,150,255) or Color3.fromRGB(255,80,80)
+nameLbl.TextSize=14
+nameLbl.Font=Enum.Font.GothamBold
+nameLbl.TextStrokeTransparency=0
+nameLbl.Parent=bb
+local distLbl=Instance.new("TextLabel")
+distLbl.Size=UDim2.new(1,0,0.3,0)
+distLbl.Position=UDim2.new(0,0,0.4,0)
+distLbl.BackgroundTransparency=1
+distLbl.TextColor3=Color3.fromRGB(255,255,255)
+distLbl.TextSize=12
+distLbl.Font=Enum.Font.Gotham
+distLbl.TextStrokeTransparency=0
+distLbl.Parent=bb
+local hpBg=Instance.new("Frame")
+hpBg.Size=UDim2.new(0.6,0,0.15,0)
+hpBg.Position=UDim2.new(0.2,0,0.7,0)
+hpBg.BackgroundColor3=Color3.fromRGB(40,40,40)
+hpBg.BorderSizePixel=0
+hpBg.Parent=bb
+local hpBar=Instance.new("Frame")
+hpBar.Size=UDim2.new(1,0,1,0)
+hpBar.BackgroundColor3=Color3.fromRGB(0,255,100)
+hpBar.BorderSizePixel=0
+hpBar.Parent=hpBg
+espElements[key]={bb=bb,dist=distLbl,hp=hpBar,head=head}
 else
-TweenService:Create(win,TweenInfo.new(0.3),{Size=originalSize,Position=originalPos}):Play()
-fullBtn.Text="□"
+local data=espElements[key]
+if data.head~=head then
+data.bb.Parent=head
+data.head=head
+end
+local myHrp=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+if myHrp then
+local dist=(hrp.Position-myHrp.Position).Magnitude
+data.dist.Text=math.floor(dist).." 米"
+end
+local ratio=hum.Health/hum.MaxHealth
+data.hp.Size=UDim2.new(ratio,0,1,0)
+data.hp.BackgroundColor3=Color3.fromRGB(255*(1-ratio),255*ratio,0)
+end
+end
+end
+end
+end
+task.spawn(function()
+while true do
+task.wait(0.1)
+if State.espEnhancedOn then updateEspEnhanced() end
 end
 end)
-xBtn.MouseButton1Click:Connect(function()
-gui.Visible=false
-TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
-end)
-local dragging,dragStart,startPos
-titleBar.InputBegan:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragging=true
-dragStart=input.Position
-startPos=win.Position
+-- ==================== 快捷键 ====================
+UIS.InputBegan:Connect(function(input,gpe)
+if gpe then return end
+if input.KeyCode==Enum.KeyCode.RightAlt then
+State.aimbotOn=not State.aimbotOn
+if State.aimbotOn then startAimbot(); updateFovCircle() else
+if aimbotLoop then aimbotLoop:Disconnect(); aimbotLoop=nil end
+if fovCircleGui then fovCircleGui:Destroy(); fovCircleGui=nil end
+end
+elseif input.KeyCode==Enum.KeyCode.LeftAlt then
+State.espOn=not State.espOn
+applyEsp()
+elseif input.KeyCode==Enum.KeyCode.CapsLock then
+State.espEnhancedOn=not State.espEnhancedOn
+if not State.espEnhancedOn then clearEspEnhanced() end
+elseif input.KeyCode==Enum.KeyCode.P then
+crossGui.Enabled=not crossGui.Enabled
+elseif input.KeyCode==Enum.KeyCode.F then
+fpsGui.Enabled=not fpsGui.Enabled
+elseif input.KeyCode==Enum.KeyCode.G then
+State.flyOn=not State.flyOn
+if State.flyOn then startFly() else stopFly() end
 end
 end)
-titleBar.InputEnded:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragging=false
+-- ==================== 配置预设 ====================
+local function savePreset(name)
+local preset={
+aimbotOn=State.aimbotOn,
+aimbotForceLock=State.aimbotForceLock,
+aimbotPart=State.aimbotPart,
+aimbotTeam=State.aimbotTeam,
+aimbotFov=State.aimbotFov,
+aimbotSmooth=State.aimbotSmooth,
+espOn=State.espOn,
+espTeam=State.espTeam,
+espEnhancedOn=State.espEnhancedOn,
+flySpeed=State.flySpeed,
+}
+pcall(function()
+if writefile then
+writefile("PrayPreset_"..name..".json",HttpService:JSONEncode(preset))
 end
 end)
-UIS.InputChanged:Connect(function(input)
-if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-local delta=input.Position-dragStart
-win.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+end
+local function loadPreset(name)
+pcall(function()
+if isfile and isfile("PrayPreset_"..name..".json") then
+local data=HttpService:JSONDecode(readfile("PrayPreset_"..name..".json"))
+for k,v in pairs(data) do State[k]=v end
 end
 end)
-TweenService:Create(uiBlur,TweenInfo.new(0.4),{Size=12}):Play()
+end
+-- ==================== 设置页补 ====================
+addSection(settingsPage,"快捷键")
+addLabel(settingsPage,"右Alt = 自瞄")
+addLabel(settingsPage,"左Alt = 透视")
+addLabel(settingsPage,"Caps = ESP增强")
+addLabel(settingsPage,"P = 准心")
+addLabel(settingsPage,"F = FPS")
+addLabel(settingsPage,"G = 飞行")
+addSection(settingsPage,"配置预设")
+addInput(settingsPage,"预设名字","default",function(v)
+State.presetName=v
+end)
+addButton(settingsPage,"💾 保存预设",function()
+if State.presetName then savePreset(State.presetName) end
+end)
+addButton(settingsPage,"📂 加载预设",function()
+if State.presetName then loadPreset(State.presetName) end
+end)
