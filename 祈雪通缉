@@ -180,6 +180,7 @@ userLabel.Parent = playerBar
 -- ==================== 标签系统 ====================
 local Tabs = {}
 local TabButtons = {}
+local tabCount = 0
 
 local function showTab(name)
     for tabName, page in pairs(Tabs) do
@@ -199,9 +200,10 @@ local function showTab(name)
 end
 
 local function createTab(name, icon)
+    tabCount = tabCount + 1
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -16, 0, 40)
-    btn.Position = UDim2.new(0, 8, 0, (#TabButtons) * 44 + 8)
+    btn.Position = UDim2.new(0, 8, 0, (tabCount - 1) * 44 + 8)
     btn.BackgroundColor3 = COLORS.SidebarBg
     btn.BackgroundTransparency = 1
     btn.Text = "   " .. icon .. "   " .. name
@@ -380,7 +382,6 @@ addLabel(homePage, "欢迎使用 Prayforsnow X")
 addLabel(homePage, "作者：祈雪")
 addLabel(homePage, "版本：v1.0")
 
--- 测试控件
 addSection(funcPage, "测试控件")
 addToggle(funcPage, "示例开关", false, function(s)
     print("开关:", s)
