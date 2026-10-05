@@ -11,65 +11,34 @@ local Window = Library:CreateWindow({
 
 local Tab = Window:AddTab("扫描", "search")
 
--- ==================== 分页显示 ====================
+-- ==================== 扫描结果（Dropdown） ====================
 local ScanGroup = Tab:AddLeftGroupbox("扫描结果")
 
 local ScanResult = {}
-local CurrentPage = 1
-local PerPage = 12
 
-local ResultLabel = ScanGroup:AddLabel("点击下方按钮开始扫描")
-local PageLabel = ScanGroup:AddLabel("第 0/0 页")
+-- 结果显示为 Dropdown（点开滚动查看）
+local ResultDropdown = ScanGroup:AddDropdown("scan_result", {
+    Text = "扫描结果（点开查看）",
+    Values = {"还没有扫描"},
+    Default = "还没有扫描",
+    Multi = false,
+    Searchable = true,
+})
 
-local function UpdateDisplay()
-    local total = #ScanResult
-    if total == 0 then
-        ResultLabel:SetText("没有结果")
-        PageLabel:SetText("第 0/0 页")
-        return
+local CountLabel = ScanGroup:AddLabel("共 0 项")
+
+-- 刷新下拉
+local function RefreshDropdown()
+    if #ScanResult == 0 then
+        ResultDropdown:SetValues({"还没有扫描"})
+        CountLabel:SetText("共 0 项")
+    else
+        ResultDropdown:SetValues(ScanResult)
+        CountLabel:SetText("共 " .. #ScanResult .. " 项")
     end
-
-    local maxPage = math.max(1, math.ceil(total / PerPage))
-    CurrentPage = math.clamp(CurrentPage, 1, maxPage)
-
-    local startIdx = (CurrentPage - 1) * PerPage + 1
-    local endIdx = math.min(startIdx + PerPage - 1, total)
-
-    local lines = {}
-    for i = startIdx, endIdx do
-        table.insert(lines, ScanResult[i])
-    end
-
-    ResultLabel:SetText(table.concat(lines, "\n"))
-    PageLabel:SetText("第 " .. CurrentPage .. "/" .. maxPage .. " 页 · 共 " .. total .. " 项")
 end
 
--- 翻页按钮
-local NavRow = Tab:AddLeftGroupbox("翻页")
-
-NavRow:AddButton({
-    Text = "⬅️ 上一页",
-    Func = function()
-        if CurrentPage > 1 then
-            CurrentPage = CurrentPage - 1
-            UpdateDisplay()
-        end
-    end,
-})
-
-NavRow:AddButton({
-    Text = "➡️ 下一页",
-    Func = function()
-        local total = #ScanResult
-        local maxPage = math.max(1, math.ceil(total / PerPage))
-        if CurrentPage < maxPage then
-            CurrentPage = CurrentPage + 1
-            UpdateDisplay()
-        end
-    end,
-})
-
--- ==================== 扫描 ====================
+-- ==================== 操作 ====================
 local ActionGroup = Tab:AddRightGroupbox("操作")
 
 ActionGroup:AddButton({
@@ -97,8 +66,8 @@ ActionGroup:AddButton({
         end
         table.sort(ScanResult)
 
-        CurrentPage = 1
-        UpdateDisplay()
+        RefreshDropdown()
+        Library:Notify("Prayforsnow X", "扫描完成，共 " .. #ScanResult .. " 项", 3)
     end,
 })
 
@@ -106,7 +75,7 @@ ActionGroup:AddButton({
     Text = "💰 只看钱相关",
     Func = function()
         ScanResult = {}
-        local keywords = {"coin", "cash", "money", "dollar", "gold", "bill", "gem", "credit", "bar"}
+        local keywords = {"coin", "cash", "money", "dollar", "gold", "bill", "gem", "credit", "bar", "note", "crate"}
         local found = {}
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and obj.Name ~= "" then
@@ -134,8 +103,13 @@ ActionGroup:AddButton({
         end
         table.sort(ScanResult)
 
-        CurrentPage = 1
-        UpdateDisplay()
+        RefreshDropdown()
+
+        if #ScanResult == 0 then
+            Library:Notify("Prayforsnow X", "没找到钱相关物件", 3)
+        else
+            Library:Notify("Prayforsnow X", "找到 " .. #ScanResult .. " 项钱相关", 3)
+        end
     end,
 })
 
@@ -143,8 +117,7 @@ ActionGroup:AddButton({
     Text = "🗑️ 清空结果",
     Func = function()
         ScanResult = {}
-        CurrentPage = 1
-        UpdateDisplay()
+        RefreshDropdown()
     end,
 })
 
