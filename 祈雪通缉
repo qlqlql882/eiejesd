@@ -1,26 +1,25 @@
 --[[
     =========================================
     Prayforsnow X
-    作者：祈雪
-    版本：v1.0
-    日期：2026/10/05
+    粉色原生 UI + 淡蓝色流星
     =========================================
 ]]
 
--- ==================== 启动加载动画 ====================
+-- ==================== 服务 ====================
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local LT = game:GetService("Lighting")
 
 local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- 磨砂
+-- ==================== 淡蓝色流星启动动画 ====================
 local blur = Instance.new("BlurEffect")
 blur.Name = "PrayBlur"
 blur.Size = 0
 blur.Parent = LT
 
--- 全屏 GUI
 local splash = Instance.new("ScreenGui")
 splash.Name = "PraySplash"
 splash.ResetOnSpawn = false
@@ -28,7 +27,6 @@ splash.IgnoreGuiInset = true
 splash.DisplayOrder = 999
 splash.Parent = pg
 
--- 背景
 local bg = Instance.new("Frame")
 bg.Size = UDim2.new(1, 0, 1, 0)
 bg.BackgroundColor3 = Color3.fromRGB(8, 16, 32)
@@ -44,7 +42,6 @@ bgGrad.Color = ColorSequence.new({
 bgGrad.Rotation = 135
 bgGrad.Parent = bg
 
--- ==================== 流星 ====================
 local function createMeteor()
     local m = Instance.new("Frame")
     local startY = math.random(0, 100) / 100
@@ -75,7 +72,6 @@ local function createMeteor()
     tween.Completed:Connect(function() m:Destroy() end)
 end
 
--- 后台循环生成流星
 task.spawn(function()
     while splash.Parent do
         createMeteor()
@@ -83,7 +79,6 @@ task.spawn(function()
     end
 end)
 
--- ==================== 中央内容 ====================
 local logoBox = Instance.new("Frame")
 logoBox.Size = UDim2.new(0, 140, 0, 140)
 logoBox.Position = UDim2.new(0.5, -70, 0.5, -100)
@@ -153,13 +148,6 @@ local barFillCorner = Instance.new("UICorner")
 barFillCorner.CornerRadius = UDim.new(0.5, 0)
 barFillCorner.Parent = barFill
 
-local barGrad = Instance.new("UIGradient")
-barGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 180, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 230, 255)),
-})
-barGrad.Parent = barFill
-
 local percent = Instance.new("TextLabel")
 percent.Size = UDim2.new(0, 100, 0, 20)
 percent.Position = UDim2.new(0.5, 0, 0.5, 175)
@@ -170,7 +158,6 @@ percent.TextSize = 14
 percent.Font = Enum.Font.Gotham
 percent.Parent = splash
 
--- ==================== 动画逻辑 ====================
 TweenService:Create(blur, TweenInfo.new(0.6), {Size = 24}):Play()
 
 task.spawn(function()
@@ -187,9 +174,8 @@ task.spawn(function()
         percent.Text = s.p .. "%"
     end
 
-    task.wait(0.5)
+    task.wait(0.4)
 
-    -- 淡出
     local fade = 0.6
     TweenService:Create(bg, TweenInfo.new(fade), {BackgroundTransparency = 1}):Play()
     TweenService:Create(logoBox, TweenInfo.new(fade), {BackgroundTransparency = 1}):Play()
@@ -207,39 +193,135 @@ task.spawn(function()
     blur:Destroy()
 end)
 
--- ==================== Obsidian UI 加载 ====================
-local repo = "https://cdn.jsdelivr.net/gh/ATLASTEAM01/Obsidian@main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
-
-local Window = Library:CreateWindow({
-    Title = "Prayforsnow X",
-    Footer = "v1.0",
-    Center = true,
-    AutoShow = true,
-})
-
-local Tabs = {
-    Home = Window:AddTab("主页", "home"),
-    UISettings = Window:AddTab("UI设置", "settings"),
+-- ==================== 粉色 UI（无标签） ====================
+local COLORS = {
+    WindowBg = Color3.fromRGB(253, 240, 245),
+    ContentBg = Color3.fromRGB(255, 252, 254),
+    Accent = Color3.fromRGB(255, 158, 181),
+    Text = Color3.fromRGB(120, 60, 90),
+    TextLight = Color3.fromRGB(180, 130, 155),
+    Stroke = Color3.fromRGB(255, 200, 215),
 }
 
-local HomeLeft = Tabs.Home:AddLeftGroupbox("脚本信息")
-HomeLeft:AddLabel("欢迎使用 Prayforsnow X")
-HomeLeft:AddLabel("作者：祈雪")
-HomeLeft:AddLabel("版本：v1.0")
+local gui = Instance.new("ScreenGui")
+gui.Name = "PrayforsnowUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = pg
 
-local HomeRight = Tabs.Home:AddRightGroupbox("更新日志")
-HomeRight:AddLabel("v1.0 - 2026/10/05")
-HomeRight:AddLabel("· 脚本首发")
-HomeRight:AddLabel("· UI 框架搭建")
+local win = Instance.new("Frame")
+win.Name = "Window"
+win.Size = UDim2.new(0, 620, 0, 420)
+win.Position = UDim2.new(0.5, -310, 0.5, -210)
+win.BackgroundColor3 = COLORS.WindowBg
+win.BackgroundTransparency = 0.05
+win.BorderSizePixel = 0
+win.Parent = gui
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-SaveManager:SetFolder("PrayforsnowX/Configs")
-SaveManager:BuildConfigSection(Tabs.UISettings)
-ThemeManager:ApplyToTab(Tabs.UISettings)
-SaveManager:LoadAutoloadConfig()
+local winCorner = Instance.new("UICorner")
+winCorner.CornerRadius = UDim.new(0, 18)
+winCorner.Parent = win
+
+local winStroke = Instance.new("UIStroke")
+winStroke.Color = COLORS.Stroke
+winStroke.Thickness = 1.5
+winStroke.Transparency = 0.4
+winStroke.Parent = win
+
+local uiBlur = Instance.new("BlurEffect")
+uiBlur.Name = "PrayUIBlur"
+uiBlur.Size = 0
+uiBlur.Parent = LT
+
+-- 顶部标题
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Prayforsnow X"
+title.TextColor3 = COLORS.Text
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = win
+
+local titlePad = Instance.new("UIPadding")
+titlePad.PaddingLeft = UDim.new(0, 24)
+titlePad.Parent = title
+
+-- 关闭按钮
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -44, 0, 10)
+closeBtn.BackgroundColor3 = COLORS.Accent
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 22
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = win
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0.5, 0)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+    win.Visible = false
+    TweenService:Create(uiBlur, TweenInfo.new(0.3), {Size = 0}):Play()
+end)
+
+-- 内容区（占满窗口下半部分）
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, -24, 1, -70)
+content.Position = UDim2.new(0, 12, 0, 58)
+content.BackgroundColor3 = COLORS.ContentBg
+content.BackgroundTransparency = 0.3
+content.BorderSizePixel = 0
+content.Parent = win
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.CornerRadius = UDim.new(0, 14)
+contentCorner.Parent = content
+
+-- 内容滚动
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -20)
+scroll.Position = UDim2.new(0, 10, 0, 10)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = COLORS.Accent
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = content
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = scroll
+
+-- 拖动
+local dragging, dragStart, startPos
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = win.Position
+    end
+end)
+title.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        win.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- 打开时模糊
+TweenService:Create(uiBlur, TweenInfo.new(0.4), {Size = 12}):Play()
