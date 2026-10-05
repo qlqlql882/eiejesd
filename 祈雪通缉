@@ -625,7 +625,6 @@ applyEsp()
 end)
 addToggle(espPage,"📊 ESP增强（血量/距离/名字）",false,function(s)
 State.espEnhancedOn=s
-if not s and clearEspEnhanced then clearEspEnhanced() end
 end)
 task.spawn(function()
 while true do
@@ -817,7 +816,6 @@ fpsLbl.Font=Enum.Font.GothamBold
 fpsLbl.Text="FPS: 0"
 fpsLbl.Parent=fpsGui
 local fpsFrameCount=0
-local fpsLastTime=tick()
 task.spawn(function()
 while true do
 task.wait(1)
@@ -850,6 +848,34 @@ watermark.Text="Prayforsnow X | v1.0"
 watermark.Parent=watermarkGui
 addToggle(visualPage,"💧 水印",true,function(s)
 watermarkGui.Enabled=s
+end)
+-- ==================== 设置页 ====================
+addSection(settingsPage,"脚本信息")
+addLabel(settingsPage,"Prayforsnow X v1.0")
+addLabel(settingsPage,"作者：祈雪")
+addSection(settingsPage,"颜色自定义")
+local colorKeys={
+{name="窗口背景",key="WindowBg"},
+{name="侧边栏",key="SidebarBg"},
+{name="内容区",key="ContentBg"},
+{name="控件背景",key="CardBg"},
+{name="主色",key="Accent"},
+{name="文字色",key="Text"},
+{name="边框色",key="Stroke"},
+}
+for _,item in ipairs(colorKeys) do
+addInput(settingsPage,item.name.."（十六进制）",HexColors[item.key],function(v)
+if v and v:sub(1,1)=="#" then
+HexColors[item.key]=v
+saveColors()
+end
+end)
+end
+addButton(settingsPage,"↩️ 恢复默认颜色",function()
+for k,v in pairs(DEFAULT_COLORS) do
+HexColors[k]=v
+end
+saveColors()
 end)
 -- ==================== ESP 增强 ====================
 local espGui=Instance.new("ScreenGui")
@@ -932,10 +958,131 @@ end
 end
 end
 end
+end
 task.spawn(function()
 while true do
 task.wait(0.1)
 if State.espEnhancedOn then updateEspEnhanced() end
+end
+end)
+-- ==================== 悬浮菜单 ====================
+local miniMenu=Instance.new("Frame")
+miniMenu.Name="MiniMenu"
+miniMenu.Size=UDim2.new(0,200,0,50)
+miniMenu.Position=UDim2.new(0,20,0.5,-25)
+miniMenu.BackgroundColor3=C("MiniBg")
+miniMenu.BackgroundTransparency=0.1
+miniMenu.BorderSizePixel=0
+miniMenu.Visible=false
+miniMenu.Parent=gui
+local miniCorner=Instance.new("UICorner")
+miniCorner.CornerRadius=UDim.new(1,0)
+miniCorner.Parent=miniMenu
+local miniStroke=Instance.new("UIStroke")
+miniStroke.Thickness=2
+miniStroke.Color=C("MiniBorder")
+miniStroke.Parent=miniMenu
+local dragArea=Instance.new("TextButton")
+dragArea.Size=UDim2.new(0,50,1,0)
+dragArea.Position=UDim2.new(0,0,0,0)
+dragArea.BackgroundTransparency=1
+dragArea.Text="✥"
+dragArea.TextColor3=Color3.fromHex("#8899AA")
+dragArea.TextSize=20
+dragArea.Font=Enum.Font.GothamBold
+dragArea.Parent=miniMenu
+local sep=Instance.new("Frame")
+sep.Size=UDim2.new(0,1,0.6,0)
+sep.Position=UDim2.new(0,50,0.2,0)
+sep.BackgroundColor3=Color3.fromHex("#2A3540")
+sep.BorderSizePixel=0
+sep.Parent=miniMenu
+local logoArea=Instance.new("TextButton")
+logoArea.Size=UDim2.new(0,60,1,0)
+logoArea.Position=UDim2.new(0,51,0,0)
+logoArea.BackgroundTransparency=1
+logoArea.Text="PS"
+logoArea.TextColor3=C("MiniText")
+logoArea.TextSize=18
+logoArea.Font=Enum.Font.GothamBold
+logoArea.Parent=miniMenu
+local nameArea=Instance.new("TextButton")
+nameArea.Size=UDim2.new(1,-111,1,0)
+nameArea.Position=UDim2.new(0,111,0,0)
+nameArea.BackgroundTransparency=1
+nameArea.Text="Prayforsnow X"
+nameArea.TextColor3=C("MiniText")
+nameArea.TextSize=14
+nameArea.Font=Enum.Font.Gotham
+nameArea.TextXAlignment=Enum.TextXAlignment.Left
+nameArea.Parent=miniMenu
+local function openWindow()
+miniMenu.Visible=false
+win.Visible=true
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=12}):Play()
+end
+logoArea.MouseButton1Click:Connect(openWindow)
+nameArea.MouseButton1Click:Connect(openWindow)
+local dragging2,dragStart2,startPos2
+dragArea.InputBegan:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging2=true
+dragStart2=input.Position
+startPos2=miniMenu.Position
+end
+end)
+dragArea.InputEnded:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging2=false
+end
+end)
+UIS.InputChanged:Connect(function(input)
+if dragging2 and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+local delta=input.Position-dragStart2
+miniMenu.Position=UDim2.new(startPos2.X.Scale,startPos2.X.Offset+delta.X,startPos2.Y.Scale,startPos2.Y.Offset+delta.Y)
+end
+end)
+-- ==================== 3 按钮逻辑 ====================
+minBtn.MouseButton1Click:Connect(function()
+win.Visible=false
+miniMenu.Visible=true
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
+end)
+local isFullscreen=false
+local originalSize=win.Size
+local originalPos=win.Position
+fullBtn.MouseButton1Click:Connect(function()
+isFullscreen=not isFullscreen
+if isFullscreen then
+TweenService:Create(win,TweenInfo.new(0.3),{Size=UDim2.new(1,0,1,0),Position=UDim2.new(0,0,0,0)}):Play()
+fullBtn.Text="❐"
+else
+TweenService:Create(win,TweenInfo.new(0.3),{Size=originalSize,Position=originalPos}):Play()
+fullBtn.Text="□"
+end
+end)
+xBtn.MouseButton1Click:Connect(function()
+gui.Visible=false
+TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
+end)
+-- ==================== 拖动窗口 ====================
+local dragging,dragStart,startPos
+titleBar.InputBegan:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging=true
+dragStart=input.Position
+startPos=win.Position
+end
+end)
+titleBar.InputEnded:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+dragging=false
+end
+end)
+UIS.InputChanged:Connect(function(input)
+if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+local delta=input.Position-dragStart
+win.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
 end
 end)
 -- ==================== 快捷键 ====================
@@ -990,7 +1137,6 @@ for k,v in pairs(data) do State[k]=v end
 end
 end)
 end
--- ==================== 设置页补 ====================
 addSection(settingsPage,"快捷键")
 addLabel(settingsPage,"右Alt = 自瞄")
 addLabel(settingsPage,"左Alt = 透视")
@@ -1005,6 +1151,8 @@ end)
 addButton(settingsPage,"💾 保存预设",function()
 if State.presetName then savePreset(State.presetName) end
 end)
-addButton(settingsPage,"📂 加载预设",function()
+addButton(settingsPage,"📥 加载预设",function()
 if State.presetName then loadPreset(State.presetName) end
 end)
+-- ==================== 打开模糊 ====================
+TweenService:Create(uiBlur,TweenInfo.new(0.4),{Size=12}):Play()
