@@ -1376,9 +1376,22 @@ TweenService:Create(win,TweenInfo.new(0.3),{Size=originalSize,Position=originalP
 fullBtn.Text="□"
 end
 end)
-xBtn.MouseButton1Click:Connect(function()
+xBtn.InputBegan:Connect(function(input)
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
 gui.Visible=false
+pcall(function() crossGui.Enabled=false end)
+pcall(function() fpsGui.Enabled=false end)
+pcall(function() watermarkGui.Enabled=false end)
+pcall(function() espGui.Enabled=false end)
+pcall(function() if fovCircleGui then fovCircleGui.Enabled=false end end)
+pcall(function() if stopFly then stopFly() end end)
+State.aimbotOn=false
+State.espOn=false
+State.flyOn=false
+State.espEnhancedOn=false
+miniMenu.Visible=true
 TweenService:Create(uiBlur,TweenInfo.new(0.3),{Size=0}):Play()
+end
 end)
 -- ==================== 拖动窗口 ====================
 local dragging,dragStart,startPos
