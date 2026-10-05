@@ -20,15 +20,8 @@ pcall(function()
 if writefile then writefile("PrayColors.json",HttpService:JSONEncode(HexColors)) end
 end)
 end
-local function loadColors()
-pcall(function()
-if isfile and isfile("PrayColors.json") then
-local data=HttpService:JSONDecode(readfile("PrayColors.json"))
-for k,v in pairs(data) do HexColors[k]=v end
-end
-end)
-end
-loadColors()
+-- 每次启动都用默认颜色，不读保存
+-- loadColors()
 -- ==================== 状态 ====================
 local State={aimbotOn=false,aimbotForceLock=false,aimbotLockedTarget=nil,aimbotPart="头部",aimbotTeam="所有人",aimbotFov=150,aimbotSmooth=0.25,espOn=false,espTeam="所有人",espEnhancedOn=false,flyOn=false,flySpeed=35,bypassOn=false,collectTarget=nil,collectAuto=false,presetName="default",musicId="1837879082",musicVolume=1}
 local flyUp,flyDown=false,false
@@ -99,16 +92,33 @@ end
 local minBtn=makeTopBtn("—",0)
 local fullBtn=makeTopBtn("□",38)
 local xBtn=makeTopBtn("×",76)
-local sidebar=Instance.new("Frame")
+-- ==================== 侧边栏 ====================
+local sidebar=Instance.new("ScrollingFrame")
+sidebar.Name="Sidebar"
 sidebar.Size=UDim2.new(0,150,1,-130)
 sidebar.Position=UDim2.new(0,12,0,58)
 sidebar.BackgroundColor3=C("SidebarBg")
 sidebar.BackgroundTransparency=0.4
 sidebar.BorderSizePixel=0
+sidebar.ScrollBarThickness=3
+sidebar.ScrollBarImageColor3=C("Accent")
+sidebar.CanvasSize=UDim2.new(0,0,0,0)
+sidebar.AutomaticCanvasSize=Enum.AutomaticSize.Y
+sidebar.ScrollingDirection=Enum.ScrollingDirection.Y
 sidebar.Parent=win
 local sideCorner=Instance.new("UICorner")
 sideCorner.CornerRadius=UDim.new(0,14)
 sideCorner.Parent=sidebar
+local sideLayout=Instance.new("UIListLayout")
+sideLayout.Padding=UDim.new(0,4)
+sideLayout.SortOrder=Enum.SortOrder.LayoutOrder
+sideLayout.Parent=sidebar
+local sidePad=Instance.new("UIPadding")
+sidePad.PaddingTop=UDim.new(0,8)
+sidePad.PaddingLeft=UDim.new(0,8)
+sidePad.PaddingRight=UDim.new(0,8)
+sidePad.Parent=sidebar
+-- ==================== 内容区 ====================
 local content=Instance.new("Frame")
 content.Size=UDim2.new(1,-190,1,-130)
 content.Position=UDim2.new(0,172,0,58)
@@ -119,6 +129,7 @@ content.Parent=win
 local contentCorner=Instance.new("UICorner")
 contentCorner.CornerRadius=UDim.new(0,14)
 contentCorner.Parent=content
+-- ==================== 底部玩家信息 ====================
 local playerBar=Instance.new("Frame")
 playerBar.Size=UDim2.new(1,-24,0,60)
 playerBar.Position=UDim2.new(0,12,1,-72)
@@ -188,8 +199,7 @@ end
 local function createTab(name,icon)
 tabCount=tabCount+1
 local btn=Instance.new("TextButton")
-btn.Size=UDim2.new(1,-16,0,40)
-btn.Position=UDim2.new(0,8,0,(tabCount-1)*44+8)
+btn.Size=UDim2.new(1,0,0,40)
 btn.BackgroundColor3=C("SidebarBg")
 btn.BackgroundTransparency=1
 btn.Text="   "..icon.."   "..name
