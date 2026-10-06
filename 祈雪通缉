@@ -582,26 +582,234 @@ if flyLoop then flyLoop:Disconnect(); flyLoop=nil end
 flyUp=false
 flyDown=false
 end
--- ==================== 绕过反作弊 ====================
+-- ==================== 反作弊绕过（增强版） ====================
+local AntiCheat = {
+    Active = false,
+    Connections = {},
+    InterceptCount = 0,
+    LastIntercept = "",
+}
+
+local function acLog(msg)
+    print("[AntiCheat] " .. msg)
+end
+
+-- 1. Kick / Ban / Teleport 拦截
+local function acSetupKickBypass()
+    pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if not AntiCheat.Active then
+                return oldNamecall(self, ...)
+            end
+
+            if method == "Kick" then
+                if self == LP then
+                    AntiCheat.InterceptCount = AntiCheat.InterceptCount + 1
+                    AntiCheat.LastIntercept = "Kick via __namecall"
+                    acLog("🛡️ 拦截 Kick")
+                    return nil
+                end
+            end
+
+            if method == "Teleport" or method == "TeleportToPlaceInstance" or method == "TeleportToSpawnByName" then
+                if self == game:GetService("TeleportService") then
+                    AntiCheat.InterceptCount = AntiCheat.InterceptCount + 1
+                    AntiCheat.LastIntercept = "Teleport kick"
+                    acLog("🛡️ 拦截强制传送")
+                    return nil
+                end
+            end
+
+            return oldNamecall(self, ...)
+        end))
+    end)
+
+    pcall(function()
+        local oldKick = LP.Kick
+        LP.Kick = function(self, reason)
+            if AntiCheat.Active and self == LP then
+                AntiCheat.InterceptCount = AntiCheat.InterceptCount + 1
+                AntiCheat.LastIntercept = "Direct Kick: " .. tostring(reason)
+                acLog("🛡️ 拦截直接 Kick")
+                return nil
+            end
+            return oldKick(self, reason)
+        end
+    end)
+
+    pcall(function()
+        local oldBanAsync = Players.BanAsync
+        Players.BanAsync = function(self, options)
+            if AntiCheat.Active then
+                AntiCheat.InterceptCount = AntiCheat.InterceptCount + 1
+                AntiCheat.LastIntercept = "BanAsync"
+                acLog("🛡️ 拦截 BanAsync")
+                return {Success = false}
+            end
+            return oldBanAsync(self, options)
+        end
+    end)
+end
+
+-- 2. Remote 关键词拦截
+local function acSetupRemoteBypass()
+    local anticheatKeywords = {
+        ["anticheat"] = true,
+        ["anticheatcheck"] = true,
+    }
+
+    pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            if not AntiCheat.Active then
+                return oldNamecall(self, ...)
+            end
+
+            local method = getnamecallmethod()
+            if not (method == "FireServer" or method == "InvokeServer") then
+                return oldNamecall(self, ...)
+            end
+
+            if not (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
+                return oldNamecall(self, ...)
+            end
+
+            local args = {...}
+            local shouldBlock = false
+            local blockReason = ""
+
+            local maxArgs = math.min(#args, 3)
+            for i = 1, maxArgs do
+                local arg = args[i]
+                if type(arg) == "string" then
+                    local lower = string.lower(arg)
+                    if anticheatKeywords[lower] then
+                        shouldBlock = true
+                        blockReason = "关键词: " .. arg
+                        break
+                    end
+                end
+            end
+
+            if not shouldBlock then
+                local nameLower = string.lower(self.Name)
+                if anticheatKeywords[nameLower] then
+                    shouldBlock = true
+                    blockReason = "事件名称: " .. self.Name
+                end
+            end
+
+            if shouldBlock then
+                AntiCheat.InterceptCount = AntiCheat.InterceptCount + 1
+                AntiCheat.LastIntercept = blockReason
+                acLog("🛡️ 拦截 " .. blockReason)
+                return nil
+            end
+
+            return oldNamecall(self, ...)
+        end))
+    end)
+end
+
+-- 3. 封禁标志清除
+local function acSetupBanFlagCleaner()
+    local banFlagNames = {"anticheatflag"}
+    local counter = 0
+    local conn = RunService.Heartbeat:Connect(function()
+        if not AntiCheat.Active then return end
+        counter = counter + 1
+        if counter % 30 ~= 0 then return end
+
+        pcall(function()
+            local char = LP.Character
+            if char then
+                for _, obj in ipairs(char:GetDescendants()) do
+                    if obj:IsA("BoolValue") or obj:IsA("NumberValue") or obj:IsA("IntValue") or obj:IsA("StringValue") then
+                        local nameLower = string.lower(obj.Name)
+                        for _, flagName in ipairs(banFlagNames) do
+                            if string.find(nameLower, flagName, 1, true) then
+                                pcall(function()
+                                    if obj:IsA("BoolValue") then obj.Value = false end
+                                    if obj:IsA("NumberValue") or obj:IsA("IntValue") then obj.Value = 0 end
+                                    if obj:IsA("StringValue") then obj.Value = "" end
+                                end)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+    table.insert(AntiCheat.Connections, conn)
+end
+
+-- 4. 反作弊 UI 移除
+local function acSetupUIBypass()
+    local uiKeywords = {"anticheat"}
+    local counter = 0
+
+    local function cleanUI()
+        pcall(function()
+            local playerGui = LP:FindFirstChild("PlayerGui")
+            if not playerGui then return end
+
+            for _, gui in ipairs(playerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") or gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
+                    local nameLower = string.lower(gui.Name)
+                    for _, keyword in ipairs(uiKeywords) do
+                        if string.find(nameLower, keyword, 1, true) then
+                            pcall(function() gui:Destroy() end)
+                            break
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    cleanUI()
+
+    local conn = RunService.Heartbeat:Connect(function()
+        if not AntiCheat.Active then return end
+        counter = counter + 1
+        if counter % 60 ~= 0 then return end
+        cleanUI()
+    end)
+    table.insert(AntiCheat.Connections, conn)
+end
+
+-- 主开关
+function AntiCheat.Enable()
+    if AntiCheat.Active then return end
+    AntiCheat.Active = true
+    acLog("🚀 启动反作弊绕过...")
+
+    acSetupKickBypass()
+    acSetupRemoteBypass()
+    acSetupBanFlagCleaner()
+    acSetupUIBypass()
+
+    acLog("✅ 所有绕过模块已加载")
+end
+
+function AntiCheat.Disable()
+    if not AntiCheat.Active then return end
+    AntiCheat.Active = false
+    for _, conn in ipairs(AntiCheat.Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    AntiCheat.Connections = {}
+    acLog("⛔ 反作弊绕过已关闭")
+end
+
+getgenv().AntiCheat = AntiCheat
+
+-- 兼容旧接口
 local function enableBypass()
-if not hookmetamethod or not newcclosure then return end
-pcall(function()
-local mt=getrawmetatable(game)
-local oldNamecall=mt.__namecall
-setreadonly(mt,false)
-mt.__namecall=newcclosure(function(self,...)
-local method=getnamecallmethod()
-if State.bypassOn then
-if method=="Kick" and self==LP then return end
-if method=="FireServer" and tostring(self)=="PlayerEvent" then
-local a={...}
-if a[1]=="combatMode" or a[1]=="takeDamage" then return end
-end
-end
-return oldNamecall(self,...)
-end)
-setreadonly(mt,true)
-end)
+    AntiCheat.Enable()
 end
 -- ==================== 隐身模式（本地透明） ====================
 local function toggleGhost(on)
@@ -687,7 +895,11 @@ addLabel(homePage,"· 色块调色板 + 音乐功能")
 addSection(funcPage,"基础功能")
 addToggle(funcPage,"🛡️ 绕过反作弊",false,function(s)
 State.bypassOn=s
-if s then enableBypass() end
+if s then
+AntiCheat.Enable()
+else
+AntiCheat.Disable()
+end
 end)
 addToggle(funcPage,"👻 隐身模式",false,function(s)
 State.ghost=s
