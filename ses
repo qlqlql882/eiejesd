@@ -330,8 +330,7 @@ MPGroup:AddToggle("MonsterPredict", {
             if monsterPredictThread then task.cancel(monsterPredictThread); monsterPredictThread = nil end
         end
     end,
-})
--- ==========================================================
+})-- ==========================================================
 -- 本地汉化表（不联网，性能好）
 -- 键 = 游戏里显示的英文（原文），值 = 中文
 -- 想加新的就按 ["英文"] = "中文", 加进来
@@ -603,8 +602,7 @@ TransGroup:AddButton({
         end)
         Library:Notify("已翻译当前界面", 2)
     end,
-})
--- ==========================================================
+})-- ==========================================================
 -- 携带物品
 -- ==========================================================
 local InvLeft  = Tabs.Inventory:AddLeftGroupbox("物品列表")
@@ -888,8 +886,7 @@ InvLeft:AddSlider("drop_speed", {
     Text = "丢弃速度（秒）",
     Default = 0.15, Min = 0.05, Max = 1, Rounding = 2,
     Callback = function(v) DropSpeed = v end,
-})
--- ==========================================================
+})-- ==========================================================
 -- 透视
 -- ==========================================================
 local ESPLeft = Tabs.NpcESP:AddLeftGroupbox("环境透视")
@@ -1336,8 +1333,7 @@ AutoRight:AddSlider("BandageHealth", {
     Text = "使用绷带血量",
     Default = 30, Min = 1, Max = 100, Rounding = 0,
     Callback = function(v) BandageHealth = v end,
-})
--- ==========================================================
+})-- ==========================================================
 -- 交互
 -- ==========================================================
 local InteractLeft = Tabs.Interact:AddLeftGroupbox("交互修改")
